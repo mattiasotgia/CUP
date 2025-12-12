@@ -131,7 +131,13 @@ class Config:
                         p['filter'] = FilterConfig(name=filter_name, params=p['filter'])
 
                     if 'binning' in p:
-                        p['binning'] = BinningConfig(**p['binning'])
+                        if isinstance(p['binning'], list):
+                            listOfBinning = []
+                            for b in p['binning']:
+                                listOfBinning.append(BinningConfig(**b))
+                            p['binning'] = listOfBinning
+                        else:
+                            p['binning'] = BinningConfig(**p['binning'])
 
                     plots.append(PlotConfig(**p))
 

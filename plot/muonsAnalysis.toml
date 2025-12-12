@@ -1,0 +1,71 @@
+# Basic configuration for setting up the 
+
+[global]
+project = "twoDValidations"
+project_name = "Signal processing" # toadd
+file = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/writerTwoDValidations.root"
+outdir = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/plotStuff/samplePlots/configurationSingles1D/"
+
+
+[analysis_Muons]
+merge_on = "Evt"
+density = false
+
+[[analysis_Muons.dataset]]
+name = "Muons/DconfigA/configA"
+# No `style` entr --> default to black line 2 pt
+label = "1D signal proc."
+
+
+[[analysis_Muons.dataset]]
+name = "Muons/DconfigB/configB"
+style = "style_2d"
+label = "2D signal proc."
+
+[[analysis_Muons.dataset]]
+name = "Muons/DconfigC/configC"
+# No `style` entr --> default to black line 2 pt
+label = "2D + DNNROI w/o Pulse Trains"
+style = "style_dnn"
+
+
+[[analysis_Muons.dataset]]
+name = "Muons/DconfigC/configC"
+# No `style` entr --> default to black line 2 pt
+label = "2D + DNNROI w/ Pulse Trains = 10"
+style = "style_dnnpt"
+
+
+[[analysis_Muons.plot]]
+label = "Hit completeness"
+product = "completeness"
+binning = {bins = 50, limits = [0, 1], flow = false}
+
+[[analysis_Muons.plot]]
+label = ["Hit purity", "Hi completeness"]
+product = ["purity", "completeness"]
+binning = [{bins = 50, limits = [0, 1], flow = false}, {bins = 50, limits = [0, 1], flow = false}]
+
+
+# [[analysis_Muons.plot]]
+
+
+# Styles are passed to mplhep instances of `histplot`
+[style_2d]
+histtype = "line"
+color = "crimson"
+
+[style_dnn]
+histtype = "line"
+color = "red"
+linestyle = ":"
+linewidth = 4
+
+[style_dnnpt]
+histtype = "line"
+color = "red"
+linestyle = ":"
+linewidth = 4
+
+# this overwrites the default style if needed
+# [style_default]

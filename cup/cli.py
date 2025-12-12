@@ -15,7 +15,7 @@ def main():
     args = cliapp.parse_args()
 
     # start cli routing here
-    print(args.configuration)
+    # print(args.configuration)
     try:
         configuration = Config.load(args.configuration[0])
     except TypeError as te:
@@ -26,5 +26,5 @@ def main():
         return
     
     # print(configuration)
-    # plot_manager = PlotManager(configuration, args.show) # TODO
-    # plot_manager.run()
+    plot_manager = PlotManager(configuration) # TODO
+    plot_manager.run()

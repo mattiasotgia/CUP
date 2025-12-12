@@ -1,5 +1,6 @@
 from typing import Dict, Callable, Any
 
+
 FILTER_REGISTRY: Dict[str, Callable] = {}
 
 def register_filter(name):
