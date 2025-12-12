@@ -1,0 +1,6 @@
+matplotlib
+mplhep
+hist
+numpy
+pandas
+toml

@@ -9,18 +9,18 @@ def read_requirements():
     return []
 
 setup(
-    name="cup",
+    name="sbn-cup",
     version="0.0.1",
     description="A Python CLI/package for managing plotting routines with CAFAna-created trees",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     author="Mattia Sotgia",
     author_email="mattia.sotgia@ge.infn.it",
-    url="https://github.com/mattiasotgia/TwoDValidations/tree/main/plotStuff",
+    url="https://github.com/mattiasotgia/CUP",
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "tuna = cup.cli:main", 
+            "cup = cup.cli:main", 
         ]
     },
     classifiers=[
