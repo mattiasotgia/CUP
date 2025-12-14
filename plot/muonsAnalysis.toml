@@ -3,13 +3,15 @@
 [global]
 project = "twoDValidations"
 project_name = "Signal processing" # toadd
-file = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/writerTwoDValidations.root"
-outdir = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/plotStuff/samplePlots/configurationSingles1D/"
+file = "/Users/msotgia/dev_areas/twoDValidationsStudies/trackValidations/writerTwoDValidations.root"
+# file = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/writerTwoDValidations.root"
+# outdir = "/exp/icarus/app/users/msotgia/analysis/twoDRecoStudies/trackValidations/plotStuff/samplePlots/configurationSingles1D/"
+outdir = "/Users/msotgia/dev_areas/twoDValidationsStudies/trackValidations/plotStuff/samplePlots/configurationSingles1D/"
 
 
 [analysis_Muons]
 merge_on = "Evt"
-density = false
+density = true
 
 [[analysis_Muons.dataset]]
 name = "Muons/DconfigA/configA"
@@ -30,7 +32,7 @@ style = "style_dnn"
 
 
 [[analysis_Muons.dataset]]
-name = "Muons/DconfigC/configC"
+name = "Muons/DconfigD/configD"
 # No `style` entr --> default to black line 2 pt
 label = "2D + DNNROI w/ Pulse Trains = 10"
 style = "style_dnnpt"
@@ -39,12 +41,13 @@ style = "style_dnnpt"
 [[analysis_Muons.plot]]
 label = "Hit completeness"
 product = "completeness"
+yscale = "log"
 binning = {bins = 50, limits = [0, 1], flow = false}
 
-[[analysis_Muons.plot]]
-label = ["Hit purity", "Hi completeness"]
-product = ["purity", "completeness"]
-binning = [{bins = 50, limits = [0, 1], flow = false}, {bins = 50, limits = [0, 1], flow = false}]
+# [[analysis_Muons.plot]]
+# label = ["Hit purity", "Hi completeness"]
+# product = ["purity", "completeness"]
+# binning = [{bins = 50, limits = [0, 1], flow = false}, {bins = 50, limits = [0, 1], flow = false}]
 
 
 # [[analysis_Muons.plot]]
@@ -52,20 +55,24 @@ binning = [{bins = 50, limits = [0, 1], flow = false}, {bins = 50, limits = [0, 
 
 # Styles are passed to mplhep instances of `histplot`
 [style_2d]
-histtype = "line"
+histtype = "fill"
+# yerr = false
 color = "crimson"
+alpha = 0.5
 
 [style_dnn]
-histtype = "line"
+histtype = "step"
 color = "red"
+yerr = false
 linestyle = ":"
 linewidth = 4
 
 [style_dnnpt]
-histtype = "line"
-color = "red"
-linestyle = ":"
-linewidth = 4
+histtype = "step"
+color = "darkred"
+yerr = false
+linestyle = "--"
+linewidth = 2
 
 # this overwrites the default style if needed
 # [style_default]

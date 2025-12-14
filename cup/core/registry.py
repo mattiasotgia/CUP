@@ -1,5 +1,10 @@
-from typing import Dict, Callable, Any
+'''
+Docstring for cup.core.registry
+'''
 
+from typing import Dict, Callable
+
+import cup.core
 
 FILTER_REGISTRY: Dict[str, Callable] = {}
 

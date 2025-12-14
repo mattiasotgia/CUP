@@ -1,4 +1,5 @@
 import argparse
+
 from cup.core.parser import Config
 from cup.plot.manager import PlotManager
 

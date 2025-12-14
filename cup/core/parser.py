@@ -1,12 +1,14 @@
-import toml
+'''
+Docstring for cup.core.parser
+'''
+
 from dataclasses import dataclass
+import pandas as pd
+import toml
 from typing import Optional, List, Dict, Any, Tuple
 from pathlib import Path
 
-from cup.core.registry import FILTER_REGISTRY, BINSCALE_REGISTRY
-
-import pandas as pd
-
+from cup.core import registry
 
 @dataclass
 class GlobalConfig:
@@ -33,20 +35,21 @@ class FilterConfig:
 
     def apply(self, df: pd.DataFrame) -> pd.DataFrame:
         '''Apply the filter using the registry.'''
-        if self.name not in FILTER_REGISTRY:
+        if self.name not in registry.FILTER_REGISTRY:
             raise ValueError(f'Unknown filter: {self.name}')
-        return FILTER_REGISTRY[self.name](df, **self.params)
+        return registry.FILTER_REGISTRY[self.name](df, **self.params)
 
 @dataclass
 class BinningConfig:
     bins: int
     limits: Tuple[int, int]
+    unit: Optional[str] = None
     scale: Optional[str] = 'linear'
     flow: Optional[bool] = True
 
     def create(self, name: str):
-        return BINSCALE_REGISTRY[self.scale](
-            nbins=self.bins,
+        return registry.BINSCALE_REGISTRY[self.scale](
+            bins=self.bins,
             limits=self.limits,
             flow=self.flow,
             name=name
@@ -57,6 +60,9 @@ class PlotConfig:
     label: str | List[str]
     product: str | List[str]
     binning: BinningConfig | List[BinningConfig]
+    layout: Optional[Tuple[int, int]] = None
+    yscale: Optional[str] = None
+    ylabel: Optional[str] = 'Entries'
     filter: Optional[FilterConfig |List[FilterConfig] | None] = None
 
 @dataclass
@@ -66,6 +72,7 @@ class AnalysisConfig:
     plot: List[PlotConfig]
     merge_on: Optional[str | List[str] | None] = None
     density: Optional[bool] = False
+    figsize: Optional[Tuple[float, float]] = (9, 6.5)
 
 
 @dataclass

@@ -1,29 +1,25 @@
-import pandas as pd
-from pathlib import Path
-from typing import Optional, Union, List, Dict, Any
-import uproot
-
-import matplotlib.pyplot as plt
-import mplhep as hep
-
-import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-
-from cup.core.parser import Config, DatasetConfig
-
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import mplhep as hep
+'''
+'''
 
 from hist import Hist
 import hist
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import mplhep as hep
+import numpy as np
+import pandas as pd
+import uproot
+from pathlib import Path
+from typing import Dict, Tuple, List, Any
 
+from cup.core.parser import Config, DatasetConfig, AnalysisConfig, BinningConfig, PlotConfig
+import cup.core
+
+
+hep.style.use('DUNE')
 
 class PlotManager:
-    """
+    '''
     Plot manager for 1D overlayed and 2D multi-panel histograms using hist.Hist.
 
     Features:
@@ -35,7 +31,7 @@ class PlotManager:
     - Density normalization
     - Filter application
     - merge_on hook if needed
-    """
+    '''
 
     def __init__(self, config):
         self.config: Config = config
@@ -46,29 +42,44 @@ class PlotManager:
     # ---------------------- DATA LOADING -------------------------
     # ============================================================
 
-    def load_dataset(self, dataset_config: DatasetConfig):
-        """
-        Hook for loading dataset (ROOT)
-        Example:
-            return uproot.open(self.config.config.file)[dataset_config.name].arrays(library='pd')
-        """
-        # raise NotImplementedError("Implement dataset loading logic here.")
+    def load_dataset(self, dataset_config: DatasetConfig) -> pd.DataFrame:
+        '''
+        Load a single dataset using the dataset configuration
+        '''
+        # raise NotImplementedError('Implement dataset loading logic here.')
         return uproot.open(self.config.config.file)[dataset_config.name].arrays(library='pd')
 
-    def load_all_datasets(self, analysis_cfg):
-        """
+    def load_all_datasets(self, analysis_cfg: AnalysisConfig, merge_on=None):
+        '''
         Load all datasets for an analysis section.
+        If merge_on is provided, keep only rows whose merge_on value(s)
+        are shared across ALL datasets.
+
         Returns:
             { dataset_name: { 'df': df, 'label': ..., 'style': ... } }
-        """
+        '''
         out = {}
-        for dcfg in analysis_cfg.dataset:
-            df = self.load_dataset(dcfg)
-            out[dcfg.name] = {
-                "df": df,
-                "label": dcfg.label,
-                "style": dcfg.style
+
+        merge_on = analysis_cfg.merge_on
+
+        common_keys = self.load_dataset(analysis_cfg.dataset[0])[merge_on].drop_duplicates()
+        for adf in analysis_cfg.dataset[1:]:
+            common_keys = pd.merge(
+                common_keys,
+                self.load_dataset(adf)[merge_on].drop_duplicates(),
+                on=merge_on,
+                how='inner'
+            )
+
+
+        for adf in analysis_cfg.dataset:
+            out[adf.name] = {
+                'data_raw': self.load_dataset(adf),
+                'data': self.load_dataset(adf).merge(common_keys, on=merge_on, how='inner'),
+                'label': adf.label,
+                'style': adf.style
             }
+
         return out
 
     # ============================================================
@@ -76,7 +87,7 @@ class PlotManager:
     # ============================================================
 
     def apply_filters(self, df, plot_cfg):
-        """Apply zero, one, or multiple filters to dataframe."""
+        '''Apply zero, one, or multiple filters to dataframe.'''
         flt = plot_cfg.filter
         if flt is None:
             return df
@@ -91,26 +102,32 @@ class PlotManager:
     # ============================================================
 
     def resolve_style(self, style_name):
-        """Return style dict (copied to avoid mutation)."""
+        '''Return style dict (copied to avoid mutation).
+        Also provide 'default' style if not declared '''
         if style_name and style_name in self.config.styles:
             return self.config.styles[style_name].style_kw.copy()
+        if style_name and style_name == 'default':
+            return {'histtype': 'step', 'color': 'k', 'yerr': False, 'linewidth': 2}
         return {}
 
     # ============================================================
     # ---------------------- PLOT: 1D -----------------------------
     # ============================================================
 
-    def plot_1d(self, ax, df, product, binning_cfg, label, style_name, density=False):
-        """
+    def plot_1d(self, ax, df: pd.DataFrame, label: str, style_name: str,
+                product: str, product_name: str, binning_cfg: BinningConfig, density=False):
+        '''
         1D histogram using hist.Hist + mplhep.histplot.
-        """
+        '''
         x = df[product].dropna()
 
         # Use the axis directly.
         axis = binning_cfg.create(product)
+        # if binning_cfg.unit:
+        #     product_name = f'{product_name} ({binning_cfg.unit})'
 
         H = Hist(axis, storage=hist.storage.Weight())
-        H.fill(**{product: x.values})
+        H.fill(x.values)
 
         # Density normalization
         if density:
@@ -119,13 +136,11 @@ class PlotManager:
                 H = H / total
 
         style = self.resolve_style(style_name)
-        histtype = style.get("histtype", "step")  # do NOT pop
 
         hep.histplot(
             H,
             ax=ax,
             label=label,
-            histtype=histtype,
             **style
         )
 
@@ -133,17 +148,25 @@ class PlotManager:
     # ---------------------- PLOT: 2D -----------------------------
     # ============================================================
 
-    def plot_2d_single_panel(self, ax, df, products, binning_cfgs, label, density=False):
-        """
+    def plot_2d_single_panel(self, ax, df: pd.DataFrame, style_name: str,
+                             products: Tuple[str, str], products_names: Tuple[str, str], 
+                             binning_cfgs: Tuple[BinningConfig, BinningConfig], density=False):
+        '''
         2D histogram using hist.Hist + hist.plot2d_full.
-        """
+        '''
+
+        raise NotImplementedError('This is a WIP')
         xname, yname = products
+        xlabel, ylabel = products_names
 
         x = df[xname].dropna()
         y = df[yname].dropna()
 
-        ax_x = binning_cfgs[0].create(xname)
-        ax_y = binning_cfgs[1].create(yname)
+        binx, biny = binning_cfgs
+
+        
+        ax_x = binx.create(binx.scale if binx.scale else 'linear')
+        ax_y = biny.create(biny.scale if biny.scale else 'linear')
 
         H = Hist(ax_x, ax_y, storage=hist.storage.Weight())
         H.fill(**{xname: x.values, yname: y.values})
@@ -154,7 +177,7 @@ class PlotManager:
                 H = H / total
 
         pcm = H.plot2d_full(ax=ax)
-        ax.set_title(label)
+        # ax.set_title(label)  
         ax.set_xlabel(xname)
         ax.set_ylabel(yname)
         return pcm
@@ -164,9 +187,9 @@ class PlotManager:
     # ============================================================
 
     def run(self):
-        """Run all analyses and produce plots."""
+        '''Run all analyses and produce plots.'''
         for name, analysis_cfg in self.config.analysis.items():
-            print(f"→ Running analysis: {name}")
+            print(f'-> Running analysis: {name}')
             dfs = self.load_all_datasets(analysis_cfg)
             for plot_cfg in analysis_cfg.plot:
                 self._make_plot(name, dfs, analysis_cfg, plot_cfg)
@@ -175,7 +198,8 @@ class PlotManager:
     # ------------------- PLOT DISPATCHER -------------------------
     # ============================================================
 
-    def _make_plot(self, analysis_name, dfs, analysis_cfg, plot_cfg):
+    def _make_plot(self, analysis_name: str, dfs: Dict[str, Any], 
+                   analysis_cfg: AnalysisConfig, plot_cfg: PlotConfig):
 
         products = plot_cfg.product
         binning = plot_cfg.binning
@@ -194,27 +218,40 @@ class PlotManager:
         # ------------------------
         if len(products) == 1:
 
-            fig, ax = plt.subplots(figsize=(8, 6))
+            if binning[0].unit:
+                labels[0] = f'{labels[0]} ({binning[0].unit})'
+
+            if binning[0].unit:
+                ylabel = f'{"Entries" if not analysis_cfg.density else "Normalised entries"} / {binning[0].create(binning[0].scale).widths[0]:.2f} {binning[0].unit}'
+            else:
+                ylabel = f'{"Entries" if not analysis_cfg.density else "Normalised entries"} / {binning[0].create(binning[0].scale).widths[0]:.2f}'
+
+            fig, ax = plt.subplots(figsize=analysis_cfg.figsize)
             for dname, dinfo in dfs.items():
-                df = self.apply_filters(dinfo["df"], plot_cfg)
+                data = self.apply_filters(dinfo['data'], plot_cfg)
                 self.plot_1d(
                     ax=ax,
-                    df=df,
+                    df=data,
                     product=products[0],
+                    product_name=labels[0],
                     binning_cfg=binning[0],
-                    label=dinfo["label"],
-                    style_name=dinfo["style"],
+                    label=dinfo['label'],
+                    style_name=dinfo['style'],
                     density=analysis_cfg.density,
                 )
 
-            ax.set_xlabel(products[0])
-            ax.set_ylabel("Density" if analysis_cfg.density else "Counts")
-            ax.set_title(labels[0])
+            if plot_cfg.yscale:
+                ax.set_yscale(plot_cfg.yscale)
+
+            ax.set_xlabel(labels[0])
+            ax.set_ylabel(ylabel)
             ax.legend()
 
-            out = self.outdir / f"{analysis_name}_{products[0]}.png"
+            hep.label.exp_text(exp=self.config.config.project_name, text=analysis_cfg.name)
+
+            out = self.outdir / f'{analysis_name}_{products[0]}.pdf'
             fig.tight_layout()
-            fig.savefig(out, dpi=150)
+            fig.savefig(out, dpi=150, bbox_inches='tight')
             plt.close(fig)
             return
 
@@ -223,6 +260,7 @@ class PlotManager:
         # ------------------------
         if len(products) == 2:
 
+            raise NotImplementedError('This is a WIP')
             dataset_names = list(dfs.keys())
             n_datasets = len(dataset_names)
 
@@ -241,7 +279,7 @@ class PlotManager:
 
             for i, dname in enumerate(dataset_names):
                 dinfo = dfs[dname]
-                df = self.apply_filters(dinfo["df"], plot_cfg)
+                df = self.apply_filters(dinfo['df'], plot_cfg)
                 ax = axes[i]
 
                 pcm_last = self.plot_2d_single_panel(
@@ -249,7 +287,7 @@ class PlotManager:
                     df=df,
                     products=products,
                     binning_cfgs=binning,
-                    label=dinfo["label"],
+                    label=dinfo['label'],
                     density=analysis_cfg.density
                 )
 
@@ -260,10 +298,10 @@ class PlotManager:
             # Shared colorbar
             fig.colorbar(pcm_last, ax=axes.tolist(), shrink=0.85)
 
-            out = self.outdir / f"{analysis_name}_MULTIPANEL_{products[0]}_{products[1]}.png"
+            out = self.outdir / f'{analysis_name}_MULTIPANEL_{products[0]}_{products[1]}.png'
             fig.tight_layout()
             fig.savefig(out, dpi=150)
             plt.close(fig)
             return
 
-        raise NotImplementedError("Plotting more than 2 products is not implemented.")
+        raise NotImplementedError('Plotting more than 2 products is not implemented.')

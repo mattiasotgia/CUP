@@ -1,7 +1,8 @@
-from cup.core.registry import register_binning, BINSCALE_REGISTRY
-from typing import Tuple
+import hist
 import numpy as np
-import hist 
+from typing import Tuple
+
+from cup.core.registry import register_binning
 
 @register_binning('log')
 def binning_logscale(bins: int, limits: Tuple[int, int], flow: bool, name: str):
@@ -12,5 +13,3 @@ def binning_logscale(bins: int, limits: Tuple[int, int], flow: bool, name: str):
 def binning_default(bins: int, limits: Tuple[int, int], flow: bool, name: str):
     _min, _max = limits
     return hist.axis.Regular(bins=bins, start=_min, stop=_max, name=name, flow=flow)
-
-print(BINSCALE_REGISTRY)
