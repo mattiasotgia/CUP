@@ -33,10 +33,15 @@ class PlotManager:
     - merge_on hook if needed
     '''
 
-    def __init__(self, config):
+    def __init__(self, config: Config):
         self.config: Config = config
         self.outdir = config.config.outdir
         self.outdir.mkdir(parents=True, exist_ok=True)
+
+        plt.rcParams['font.size'] = self.config.config.fontsize
+        plt.rcParams['axes.titlesize'] = self.config.config.fontsize
+        plt.rcParams['legend.fontsize'] = self.config.config.fontsize
+        plt.rcParams['axes.ymargin'] = 0.1
 
     # ============================================================
     # ---------------------- DATA LOADING -------------------------
@@ -114,7 +119,7 @@ class PlotManager:
     # ---------------------- PLOT: 1D -----------------------------
     # ============================================================
 
-    def plot_1d(self, ax, df: pd.DataFrame, label: str, style_name: str,
+    def plot_1d(self, ax, df: pd.DataFrame, label: str, showmedian: str | None, style_name: str,
                 product: str, product_name: str, binning_cfg: BinningConfig, density=False):
         '''
         1D histogram using hist.Hist + mplhep.histplot.
@@ -140,7 +145,7 @@ class PlotManager:
         hep.histplot(
             H,
             ax=ax,
-            label=label,
+            label=label if not showmedian else f'{label} ({format(np.median(x.values), showmedian)})',
             **style
         )
 
@@ -222,13 +227,14 @@ class PlotManager:
                 labels[0] = f'{labels[0]} ({binning[0].unit})'
 
             if binning[0].unit:
-                ylabel = f'{"Entries" if not analysis_cfg.density else "Normalised entries"} / {binning[0].create(binning[0].scale).widths[0]:.2f} {binning[0].unit}'
+                ylabel = f'{plot_cfg.ylabel if not analysis_cfg.density else f"Normalised {plot_cfg.ylabel.casefold()}"} / {binning[0].create(binning[0].scale).widths[0]:.2f} {binning[0].unit}'
             else:
-                ylabel = f'{"Entries" if not analysis_cfg.density else "Normalised entries"} / {binning[0].create(binning[0].scale).widths[0]:.2f}'
+                ylabel = f'{plot_cfg.ylabel if not analysis_cfg.density else f"Normalised {plot_cfg.ylabel.casefold()}"} / {binning[0].create(binning[0].scale).widths[0]:.2f}'
 
             fig, ax = plt.subplots(figsize=analysis_cfg.figsize)
             for dname, dinfo in dfs.items():
                 data = self.apply_filters(dinfo['data'], plot_cfg)
+                
                 self.plot_1d(
                     ax=ax,
                     df=data,
@@ -236,6 +242,7 @@ class PlotManager:
                     product_name=labels[0],
                     binning_cfg=binning[0],
                     label=dinfo['label'],
+                    showmedian=plot_cfg.showmedian,
                     style_name=dinfo['style'],
                     density=analysis_cfg.density,
                 )
@@ -245,9 +252,21 @@ class PlotManager:
 
             ax.set_xlabel(labels[0])
             ax.set_ylabel(ylabel)
-            ax.legend()
+            ax.legend(title=analysis_cfg.name)
 
-            hep.label.exp_text(exp=self.config.config.project_name, text=analysis_cfg.name)
+            if binning[0].integer:
+                ax.tick_params(axis='x', which='minor', bottom=False, top=False)
+
+            if plot_cfg.grid:
+                ax.grid(True)
+
+            hep.label.exp_text(
+                exp=self.config.config.project_name, 
+                # text=f'Work in progress ({analysis_cfg.name})',
+                text='Work in progress',
+                # supp=analysis_cfg.name,
+                fontsize = self.config.config.fontsize
+            )
 
             out = self.outdir / f'{analysis_name}_{products[0]}.pdf'
             fig.tight_layout()

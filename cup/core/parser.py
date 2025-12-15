@@ -16,6 +16,7 @@ class GlobalConfig:
     file: str
     outdir: Optional[Path] = Path.cwd() / 'plots'
     project_name: Optional[str] = 'ICARUS'
+    fontsize: Optional[int] = 15
 
 @dataclass
 class StyleConfig:
@@ -46,6 +47,7 @@ class BinningConfig:
     unit: Optional[str] = None
     scale: Optional[str] = 'linear'
     flow: Optional[bool] = True
+    integer: Optional[bool] = False
 
     def create(self, name: str):
         return registry.BINSCALE_REGISTRY[self.scale](
@@ -63,6 +65,8 @@ class PlotConfig:
     layout: Optional[Tuple[int, int]] = None
     yscale: Optional[str] = None
     ylabel: Optional[str] = 'Entries'
+    grid: Optional[bool] = False
+    showmedian: Optional[str] = None
     filter: Optional[FilterConfig |List[FilterConfig] | None] = None
 
 @dataclass
@@ -123,12 +127,12 @@ class Config:
                 
                 datasets = [
                     DatasetConfig(**d)
-                    for d in raw[k].get('dataset', {})
+                    for d in raw[k].pop('dataset', {})
                 ]
 
                 # Parse plots
                 plots = []
-                for p in raw[k].get('plot', {}):
+                for p in raw[k].pop('plot', {}):
                     
                     # p --> dictionary of the analysis_Muon.plot list
                     # keys: label, product, (filter --> FilterConfig)
@@ -152,7 +156,7 @@ class Config:
                     name=k.replace('analysis_', ''),
                     dataset=datasets,
                     plot=plots,
-                    merge_on=raw[k].get('merge_on', False)
+                    **raw[k]
                 )
         
         return Config(
