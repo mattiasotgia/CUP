@@ -39,10 +39,25 @@ def filter_max_slice_count(
     out[product] = out[slice_column] + 1
     return out
 
-@register_filter('filter_on')
+def describe_filterOn(on, label, min = None, max = None):
+    parts = []
+    if min is not None:
+        parts.append(f'$\\geq {min:.2f}$')
+
+    if max is not None:
+        parts.append(f'$\\leq {max:.2f}$')
+
+    suffix = '; '.join(parts)
+    text = f'{label} {suffix}' if suffix else label
+
+    return text
+
+@register_filter('filter_on', describe=describe_filterOn)
+        
 def filter_filter_on(
     df: pd.DataFrame,
     on: str,
+    label: str,
     min: float | None = None,
     max: float | None = None 
 ): 

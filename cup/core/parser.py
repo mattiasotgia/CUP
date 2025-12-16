@@ -16,7 +16,8 @@ class GlobalConfig:
     file: str
     outdir: Optional[Path] = Path.cwd() / 'plots'
     project_name: Optional[str] = 'ICARUS'
-    fontsize: Optional[int] = 15
+    fontsize: Optional[int] = 18
+    labelfontsize: Optional[int] = 15
 
 @dataclass
 class StyleConfig:
@@ -38,7 +39,35 @@ class FilterConfig:
         '''Apply the filter using the registry.'''
         if self.name not in registry.FILTER_REGISTRY:
             raise ValueError(f'Unknown filter: {self.name}')
+        # print(f'Applied filter {self.name}')
         return registry.FILTER_REGISTRY[self.name](df, **self.params)
+
+    def describe(self) -> str:
+        '''
+        Return a human-readable description of the filter.
+        Delegated to the registry filter if available.
+        '''
+        if self.name in registry.FILTER_DESCRIBE_REGISTRY:
+            return registry.FILTER_DESCRIBE_REGISTRY[self.name](**self.params)
+
+        # Fallback
+        params = ', '.join(f'{k}={v}' for k, v in self.params.items())
+        return f'{self.name}({params})' if params else self.name
+    
+def parse_filters(raw_filter) -> Optional[List[FilterConfig]]:
+    if raw_filter is None:
+        return None
+
+    if isinstance(raw_filter, dict):
+        raw_filter = [raw_filter]
+
+    filters = []
+    for f in raw_filter:
+        f = f.copy()
+        name = f.pop('name')
+        filters.append(FilterConfig(name=name, params=f))
+
+    return filters
 
 @dataclass
 class BinningConfig:
@@ -46,14 +75,14 @@ class BinningConfig:
     limits: Tuple[int, int]
     unit: Optional[str] = None
     scale: Optional[str] = 'linear'
-    flow: Optional[bool] = True
+    flow: Optional[str] = None
     integer: Optional[bool] = False
 
     def create(self, name: str):
         return registry.BINSCALE_REGISTRY[self.scale](
             bins=self.bins,
             limits=self.limits,
-            flow=self.flow,
+            flow=bool(self.flow),
             name=name
         )
     
@@ -67,7 +96,7 @@ class PlotConfig:
     ylabel: Optional[str] = 'Entries'
     grid: Optional[bool] = False
     showmedian: Optional[str] = None
-    filter: Optional[FilterConfig |List[FilterConfig] | None] = None
+    filter: Optional[List[FilterConfig]] = None
 
 @dataclass
 class AnalysisConfig:
@@ -76,7 +105,8 @@ class AnalysisConfig:
     plot: List[PlotConfig]
     merge_on: Optional[str | List[str] | None] = None
     density: Optional[bool] = False
-    figsize: Optional[Tuple[float, float]] = (9, 6.5)
+    figsize: Optional[Tuple[float, float]] = (9, 7)
+    filter: Optional[List[FilterConfig]] = None
 
 
 @dataclass
@@ -137,9 +167,7 @@ class Config:
                     # p --> dictionary of the analysis_Muon.plot list
                     # keys: label, product, (filter --> FilterConfig)
 
-                    if 'filter' in p:
-                        filter_name = p['filter'].pop('name')
-                        p['filter'] = FilterConfig(name=filter_name, params=p['filter'])
+                    p['filter'] = parse_filters(p.get('filter'))
 
                     if 'binning' in p:
                         if isinstance(p['binning'], list):
@@ -152,10 +180,13 @@ class Config:
 
                     plots.append(PlotConfig(**p))
 
+                analysis_filters = parse_filters(raw[k].pop('filter', None))
+
                 analysis[k.replace('analysis_', '')] = AnalysisConfig(
                     name=k.replace('analysis_', ''),
                     dataset=datasets,
                     plot=plots,
+                    filter=analysis_filters,
                     **raw[k]
                 )
         

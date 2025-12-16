@@ -10,9 +10,9 @@ import numpy as np
 import pandas as pd
 import uproot
 from pathlib import Path
-from typing import Dict, Tuple, List, Any
+from typing import Dict, Tuple, List, Any, Optional
 
-from cup.core.parser import Config, DatasetConfig, AnalysisConfig, BinningConfig, PlotConfig
+from cup.core.parser import Config, DatasetConfig, AnalysisConfig, BinningConfig, PlotConfig, FilterConfig
 import cup.core
 
 
@@ -38,8 +38,8 @@ class PlotManager:
         self.outdir = config.config.outdir
         self.outdir.mkdir(parents=True, exist_ok=True)
 
-        plt.rcParams['font.size'] = self.config.config.fontsize
-        plt.rcParams['axes.titlesize'] = self.config.config.fontsize
+        plt.rcParams['font.size'] = self.config.config.labelfontsize
+        plt.rcParams['axes.titlesize'] = self.config.config.labelfontsize
         plt.rcParams['legend.fontsize'] = self.config.config.fontsize
         plt.rcParams['axes.ymargin'] = 0.1
 
@@ -91,16 +91,19 @@ class PlotManager:
     # ------------------------ FILTERS ----------------------------
     # ============================================================
 
-    def apply_filters(self, df, plot_cfg):
-        '''Apply zero, one, or multiple filters to dataframe.'''
-        flt = plot_cfg.filter
-        if flt is None:
+    def apply_filters(self, df: pd.DataFrame, filters: Optional[List[FilterConfig]]):
+        '''Apply zero or more filters to dataframe.'''
+        if not filters:
             return df
 
-        filters = flt if isinstance(flt, list) else [flt]
         for f in filters:
             df = f.apply(df)
         return df
+
+    def describe_filters(self, filters: Optional[List[FilterConfig]]) -> List[str]:
+        if not filters:
+            return []
+        return [f.describe() for f in filters]
 
     # ============================================================
     # ------------------------ STYLES -----------------------------
@@ -146,6 +149,7 @@ class PlotManager:
             H,
             ax=ax,
             label=label if not showmedian else f'{label} ({format(np.median(x.values), showmedian)})',
+            flow=binning_cfg.flow,
             **style
         )
 
@@ -233,7 +237,8 @@ class PlotManager:
 
             fig, ax = plt.subplots(figsize=analysis_cfg.figsize)
             for dname, dinfo in dfs.items():
-                data = self.apply_filters(dinfo['data'], plot_cfg)
+                data = self.apply_filters(dinfo['data'], plot_cfg.filter)
+                data = self.apply_filters(data, analysis_cfg.filter)
                 
                 self.plot_1d(
                     ax=ax,
@@ -267,6 +272,28 @@ class PlotManager:
                 # supp=analysis_cfg.name,
                 fontsize = self.config.config.fontsize
             )
+
+            filter_text = []
+
+            filter_text += self.describe_filters(analysis_cfg.filter)
+            filter_text += self.describe_filters(plot_cfg.filter)
+
+            if filter_text:
+                ax.text(
+                    1,
+                    1.05,
+                    '\n'.join(filter_text),
+                    transform=ax.transAxes,
+                    va='bottom',
+                    ha='right',
+                    fontsize=self.config.config.fontsize * 0.85,
+                    # bbox=dict(
+                    #     boxstyle='',
+                    #     # facecolor='white',
+                    #     edgecolor='none',
+                    #     alpha=0.85
+                    # )
+                )
 
             out = self.outdir / f'{analysis_name}_{products[0]}.pdf'
             fig.tight_layout()
