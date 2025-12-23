@@ -16,6 +16,7 @@ class GlobalConfig:
     file: str
     outdir: Optional[Path] = Path.cwd() / 'plots'
     project_name: Optional[str] = 'ICARUS'
+    project_label: Optional[str] = 'Work in progress'
     fontsize: Optional[int] = 18
     labelfontsize: Optional[int] = 15
 
@@ -107,6 +108,7 @@ class AnalysisConfig:
     density: Optional[bool] = False
     figsize: Optional[Tuple[float, float]] = (9, 7)
     filter: Optional[List[FilterConfig]] = None
+    analysis_supplementaltext: Optional[str] = ''
 
 
 @dataclass

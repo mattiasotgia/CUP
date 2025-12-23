@@ -267,9 +267,8 @@ class PlotManager:
 
             hep.label.exp_text(
                 exp=self.config.config.project_name, 
-                # text=f'Work in progress ({analysis_cfg.name})',
-                text='Work in progress',
-                # supp=analysis_cfg.name,
+                text=self.config.config.project_label,
+                supp=analysis_cfg.analysis_supplementaltext,
                 fontsize = self.config.config.fontsize
             )
 
