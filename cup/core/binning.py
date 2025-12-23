@@ -7,8 +7,10 @@ from cup.core.registry import register_binning
 @register_binning('log')
 def binning_logscale(bins: int, limits: Tuple[int, int], flow: bool, name: str):
     _min, _max = limits
+    logMin = np.min([np.log10(_min), np.log10(_max)])
+    logMax = np.max([np.log10(_min), np.log10(_max)])
     return hist.axis.Variable(
-        np.logspace(np.log10(_min), np.log10(_max), bins), name=name, flow=flow
+        np.logspace(logMin, logMax, bins), name=name, flow=flow
     )
 
 @register_binning('linear')

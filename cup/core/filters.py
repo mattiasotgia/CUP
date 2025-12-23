@@ -41,19 +41,23 @@ def filter_max_slice_count(
 
 def describe_filterOn(on, label, min = None, max = None):
     parts = []
+    lu = label.split(":", 1)
+    label = lu[0]
+    unit = lu[1] if len(lu) > 1 else None
+    unit = "" if not unit else f" {unit}"
+
     if min is not None:
-        parts.append(f'$\\geq {min:.2f}$')
+        parts.append(f'$\\geq {min:.2f}~{unit}$')
 
     if max is not None:
-        parts.append(f'$\\leq {max:.2f}$')
+        parts.append(f'$\\leq {max:.2f}~{unit}$')
 
     suffix = '; '.join(parts)
     text = f'{label} {suffix}' if suffix else label
 
     return text
 
-@register_filter('filter_on', describe=describe_filterOn)
-        
+@register_filter('filter_on', describe=describe_filterOn)   
 def filter_filter_on(
     df: pd.DataFrame,
     on: str,
@@ -87,5 +91,37 @@ def filter_filter_on(
     if max:
         mask_max = df[on] < max
         mask = mask & mask_max
+
+    return df[mask]
+
+
+@register_filter(
+    'value_is', 
+    describe=lambda on, label, value = None: f'{label} = {value:.2f}'
+)        
+def filter_value_is(
+    df: pd.DataFrame,
+    on: str,
+    label: str,
+    value: float | None
+): 
+    '''
+    Docstring for filter_value_is
+    
+    :param df: Dataframe of the data input
+    :type df: pd.DataFrame
+    :param on: Parameter over which filtering is done
+    :type on: str
+    :param label: Label of the parameter over which filtering is done
+    :type label: str
+    :param value: Paramenter value
+    :type value: float | None
+    '''
+
+    mask = True
+
+    if value:
+        mask_value = df[on] == value
+        mask = mask & mask_value
 
     return df[mask]

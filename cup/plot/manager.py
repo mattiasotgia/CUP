@@ -148,7 +148,7 @@ class PlotManager:
         hep.histplot(
             H,
             ax=ax,
-            label=label if not showmedian else f'{label} ({format(np.median(x.values), showmedian)})',
+            label=label if not showmedian else f'{label} ({format(np.median(x.values), showmedian)}{'' if not binning_cfg.unit else f" {binning_cfg.unit}"})',
             flow=binning_cfg.flow,
             **style
         )
@@ -254,6 +254,9 @@ class PlotManager:
 
             if plot_cfg.yscale:
                 ax.set_yscale(plot_cfg.yscale)
+
+            if binning[0].scale:
+                ax.set_xscale(binning[0].scale)
 
             ax.set_xlabel(labels[0])
             ax.set_ylabel(ylabel)
