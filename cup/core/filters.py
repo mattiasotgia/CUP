@@ -3,6 +3,7 @@ Docstring for cup.core.filters
 '''
 
 import pandas as pd
+from typing import Tuple
 
 from cup.core.registry import register_filter
 
@@ -125,3 +126,13 @@ def filter_value_is(
         mask = mask & mask_value
 
     return df[mask]
+
+@register_filter('energy_completeness', lambda product, definition: '')
+def filter_energyCompletenessWithVisEnergy(
+    df: pd.DataFrame,
+    product: str,
+    definition: Tuple[str, str]
+):
+    energyMatch, visEnergy = definition
+    df[product] = df[energyMatch]/df[visEnergy]
+    return df
