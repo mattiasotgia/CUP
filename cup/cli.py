@@ -3,6 +3,8 @@ import argparse
 from cup.core.parser import Config
 from cup.plot.manager import PlotManager
 
+import matplotlib as mpl
+
 def main():
     
     # Declare cliapp
@@ -11,9 +13,12 @@ def main():
         '-c', '--configuration', help='TOML configuration for current analysis', 
         nargs=1, type=str, required=True)
     cliapp.add_argument('-s', '--show', help='If interactive, open analysis.plot with name <show>')
-
+    cliapp.add_argument('-b', '--batch', help='If running over ssh, force backend to be Agg', action='store_true')
     
     args = cliapp.parse_args()
+
+    if args.batch:
+        mpl.use('Agg')
 
     # start cli routing here
     # print(args.configuration)
