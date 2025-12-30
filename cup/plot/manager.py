@@ -297,8 +297,11 @@ class PlotManager:
                     # )
                 )
 
-            out = self.outdir / f'{analysis_name}_{products[0]}.pdf'
+            out = self.outdir / f'{self.config.config.project}_{analysis_name}_{products[0]}.{self.config.config.file_extension}'
             fig.tight_layout()
+            additional_kw = {}
+            if self.config.config.file_dpi:
+                additional_kw['dpi'] = self.config.config.file_dpi
             fig.savefig(out, dpi=150, bbox_inches='tight')
             plt.close(fig)
             return

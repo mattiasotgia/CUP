@@ -19,6 +19,8 @@ class GlobalConfig:
     project_label: Optional[str] = 'Work in progress'
     fontsize: Optional[int] = 18
     labelfontsize: Optional[int] = 15
+    file_extension: Optional[str] = 'pdf'
+    file_dpi: Optional[float] = None
 
 @dataclass
 class StyleConfig:
