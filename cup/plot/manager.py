@@ -255,7 +255,7 @@ class PlotManager:
             if plot_cfg.yscale:
                 ax.set_yscale(plot_cfg.yscale)
 
-            if binning[0].scale:
+            if binning[0].scale and binning[0].scale_ax:
                 ax.set_xscale(binning[0].scale)
 
             ax.set_xlabel(labels[0])

@@ -80,6 +80,7 @@ class BinningConfig:
     scale: Optional[str] = 'linear'
     flow: Optional[str] = None
     integer: Optional[bool] = False
+    scale_ax: Optional[bool] = True
 
     def create(self, name: str):
         return registry.BINSCALE_REGISTRY[self.scale](

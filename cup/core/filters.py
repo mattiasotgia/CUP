@@ -127,12 +127,12 @@ def filter_value_is(
 
     return df[mask]
 
-@register_filter('energy_completeness', lambda product, definition: '')
-def filter_energyCompletenessWithVisEnergy(
+@register_filter('ratio', lambda product, elements: '')
+def filter_ratio(
     df: pd.DataFrame,
     product: str,
-    definition: Tuple[str, str]
+    elements: Tuple[str, str]
 ):
-    energyMatch, visEnergy = definition
-    df[product] = df[energyMatch]/df[visEnergy]
+    numerator, denominator = elements
+    df[product] = df[numerator]/df[denominator]
     return df
