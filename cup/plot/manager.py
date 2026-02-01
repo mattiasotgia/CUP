@@ -103,7 +103,7 @@ class PlotManager:
     def describe_filters(self, filters: Optional[List[FilterConfig]]) -> List[str]:
         if not filters:
             return []
-        return [f.describe() for f in filters]
+        return [f.describe() for f in filters if f.describe() is not None]
 
     # ============================================================
     # ------------------------ STYLES -----------------------------

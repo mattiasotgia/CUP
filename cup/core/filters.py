@@ -127,7 +127,7 @@ def filter_value_is(
 
     return df[mask]
 
-@register_filter('ratio', lambda product, elements: '')
+@register_filter('ratio', lambda product, elements: None)
 def filter_ratio(
     df: pd.DataFrame,
     product: str,
