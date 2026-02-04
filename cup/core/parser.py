@@ -5,7 +5,7 @@ Docstring for cup.core.parser
 from dataclasses import dataclass
 import pandas as pd
 import toml
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any, Tuple, Literal
 from pathlib import Path
 
 from cup.core import registry
@@ -21,6 +21,7 @@ class GlobalConfig:
     labelfontsize: Optional[int] = 15
     file_extension: Optional[str] = 'pdf'
     file_dpi: Optional[float] = None
+    ratio_height: int = 4
 
 @dataclass
 class StyleConfig:
@@ -57,20 +58,21 @@ class FilterConfig:
         params = ', '.join(f'{k}={v}' for k, v in self.params.items())
         return f'{self.name}({params})' if params else self.name
     
-def parse_filters(raw_filter) -> Optional[List[FilterConfig]]:
-    if raw_filter is None:
-        return None
+    @staticmethod
+    def parse_filters(raw_filter):
+        if raw_filter is None:
+            return None
 
-    if isinstance(raw_filter, dict):
-        raw_filter = [raw_filter]
+        if isinstance(raw_filter, dict):
+            raw_filter = [raw_filter]
 
-    filters = []
-    for f in raw_filter:
-        f = f.copy()
-        name = f.pop('name')
-        filters.append(FilterConfig(name=name, params=f))
+        filters = []
+        for f in raw_filter:
+            f = f.copy()
+            name = f.pop('name')
+            filters.append(FilterConfig(name=name, params=f))
 
-    return filters
+        return filters
 
 @dataclass
 class BinningConfig:
@@ -91,16 +93,51 @@ class BinningConfig:
         )
     
 @dataclass
-class PlotConfig:
+class PlotMetaConfig:
+    ylabel: Optional[str]
+
+
+@dataclass
+class RatioPlotConfig(PlotMetaConfig):
+    type: Literal[
+        "ratio", 
+        "split_ratio", 
+        "pull", 
+        "difference", 
+        "relative_difference", 
+        "efficiency", 
+        "asymmetry"
+    ]
+    compare: Tuple[str]
+    color: str = 'k'
+
+    @staticmethod
+    def parse_ratios(ratio):
+        if ratio is None:
+            return None
+        
+        if isinstance(ratio, dict):
+            ratio = [ratio]
+
+        ratios = []
+        for r in ratio:
+            r = r.copy()
+            ratios.append(RatioPlotConfig(**r))
+
+        return ratios
+
+@dataclass
+class PlotConfig(PlotMetaConfig):
     label: str | List[str]
     product: str | List[str]
     binning: BinningConfig | List[BinningConfig]
     layout: Optional[Tuple[int, int]] = None
     yscale: Optional[str] = None
-    ylabel: Optional[str] = 'Entries'
+    ylabel: str = 'Entries'
     grid: Optional[bool] = False
     showmedian: Optional[str] = None
     filter: Optional[List[FilterConfig]] = None
+    ratio: Optional[List[RatioPlotConfig]] = None
 
 @dataclass
 class AnalysisConfig:
@@ -172,7 +209,7 @@ class Config:
                     # p --> dictionary of the analysis_Muon.plot list
                     # keys: label, product, (filter --> FilterConfig)
 
-                    p['filter'] = parse_filters(p.get('filter'))
+                    p['filter'] = FilterConfig.parse_filters(p.get('filter'))
 
                     if 'binning' in p:
                         if isinstance(p['binning'], list):
@@ -182,10 +219,10 @@ class Config:
                             p['binning'] = listOfBinning
                         else:
                             p['binning'] = BinningConfig(**p['binning'])
+                    
+                    p['ratio'] = RatioPlotConfig.parse_ratios(p.get('ratio'))
 
-                    plots.append(PlotConfig(**p))
-
-                analysis_filters = parse_filters(raw[k].pop('filter', None))
+                analysis_filters = FilterConfig.parse_filters(raw[k].pop('filter', None))
 
                 analysis[k.replace('analysis_', '')] = AnalysisConfig(
                     name=k.replace('analysis_', ''),
