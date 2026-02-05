@@ -21,7 +21,7 @@ class GlobalConfig:
     labelfontsize: Optional[int] = 15
     file_extension: Optional[str] = 'pdf'
     file_dpi: Optional[float] = None
-    ratio_height: int = 4
+    ratio_height: int = 2
 
 @dataclass
 class StyleConfig:
@@ -92,14 +92,15 @@ class BinningConfig:
             name=name
         )
     
-@dataclass
-class PlotMetaConfig:
-    ylabel: Optional[str]
+# @dataclass
+# class PlotMetaConfig:
+#     ylabel: str
 
 
 @dataclass
-class RatioPlotConfig(PlotMetaConfig):
-    type: Literal[
+class RatioPlotConfig:
+    compare: Tuple[str]
+    comparison: Literal[
         "ratio", 
         "split_ratio", 
         "pull", 
@@ -107,9 +108,15 @@ class RatioPlotConfig(PlotMetaConfig):
         "relative_difference", 
         "efficiency", 
         "asymmetry"
-    ]
-    compare: Tuple[str]
+    ] = "ratio"
+    style: Literal[
+        "errorbar",
+        "bar",
+        None
+    ] = None
     color: str = 'k'
+    alpha: float | None = None
+    ylabel: Optional[str] = None
 
     @staticmethod
     def parse_ratios(ratio):
@@ -127,13 +134,13 @@ class RatioPlotConfig(PlotMetaConfig):
         return ratios
 
 @dataclass
-class PlotConfig(PlotMetaConfig):
+class PlotConfig:
     label: str | List[str]
     product: str | List[str]
     binning: BinningConfig | List[BinningConfig]
     layout: Optional[Tuple[int, int]] = None
     yscale: Optional[str] = None
-    ylabel: str = 'Entries'
+    ylabel: Optional[str] = 'Entries'
     grid: Optional[bool] = False
     showmedian: Optional[str] = None
     filter: Optional[List[FilterConfig]] = None
@@ -221,6 +228,7 @@ class Config:
                             p['binning'] = BinningConfig(**p['binning'])
                     
                     p['ratio'] = RatioPlotConfig.parse_ratios(p.get('ratio'))
+                    plots.append(PlotConfig(**p))
 
                 analysis_filters = FilterConfig.parse_filters(raw[k].pop('filter', None))
 
