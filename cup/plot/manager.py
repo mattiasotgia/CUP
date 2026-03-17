@@ -117,6 +117,48 @@ class PlotManager:
         if style_name and style_name == 'default':
             return {'histtype': 'step', 'color': 'k', 'yerr': False, 'linewidth': 2}
         return {}
+    
+    # ============================================================
+    # ------------------------ RATIOS -----------------------------
+    # ============================================================
+
+    def plot_ratio(self, ax, a: pd.DataFrame, b: pd.DataFrame, product: str, binning_cfg: BinningConfig, 
+                   ylabel: str, comparison: str, style: str, color: str, alpha: float | None):
+        
+        Da = a[product].dropna()
+        Db = b[product].dropna()
+        
+        axis = binning_cfg.create(product)
+
+        Ha = Hist(axis, storage=hist.storage.Weight())
+        Ha.fill(Da.values)
+        Hb = Hist(axis, storage=hist.storage.Weight())
+        Hb.fill(Db.values)
+
+        cvalues, cerrorslo, cerrorshi = hep.get_comparison(Ha, Hb, comparison=comparison)
+        cerrors = np.array([cerrorslo, cerrorshi])
+
+        if comparison in ['ratio', 'split_ratio', 'efficiency']:
+            if style is None:
+                style = 'errorbar'
+            ax.axhline(1, ls='--', color='k')
+        else:
+            # in ['pull', 'difference', 'relative_difference', 'asymmetry']
+            if style is None:
+                style = 'bar'
+            ax.axhline(0, ls='--', color='k')
+
+        if style == 'bar':
+            alpha=alpha if alpha is not None else 0.5
+            ax.bar(axis.centers, cvalues, width=axis.widths, color=color, alpha=alpha)
+        elif style == 'errorbar':
+            alpha=alpha if alpha is not None else 1
+            ax.errorbar(axis.centers, cvalues, yerr=cerrors, color=color, markersize=5, marker='o', xerr=False, ls='')
+        else:
+            raise NotImplementedError(f'Allowed styles are "bar" and "errorbar", you entered {style}')
+        
+        ax.set_ylabel(ylabel if ylabel is not None else comparison.capitalize().replace('_', ' '))
+
 
     # ============================================================
     # ---------------------- PLOT: 1D -----------------------------
@@ -235,13 +277,27 @@ class PlotManager:
             else:
                 ylabel = f'{plot_cfg.ylabel if not analysis_cfg.density else f"Normalised {plot_cfg.ylabel.casefold()}"} / {binning[0].create(binning[0].scale).widths[0]:.2f}'
 
-            fig, ax = plt.subplots(figsize=analysis_cfg.figsize)
+            nRatios = len(plot_cfg.ratio) if plot_cfg.ratio is not None else 0
+            ratio_height = self.config.config.ratio_height   # inches
+            width, height = analysis_cfg.figsize
+            main_height = height
+            total_height = main_height + nRatios * ratio_height
+            height_ratios = [main_height] + [ratio_height] * nRatios
+
+            fig, ax = plt.subplots(
+                nrows=1 + nRatios,
+                sharex=True,
+                figsize=(width, total_height),
+                gridspec_kw={"height_ratios": height_ratios},
+            )
+            ax = np.atleast_1d(ax)
+            
             for dname, dinfo in dfs.items():
                 data = self.apply_filters(dinfo['data'], plot_cfg.filter)
                 data = self.apply_filters(data, analysis_cfg.filter)
                 
                 self.plot_1d(
-                    ax=ax,
+                    ax=ax[0],
                     df=data,
                     product=products[0],
                     product_name=labels[0],
@@ -253,39 +309,41 @@ class PlotManager:
                 )
 
             if plot_cfg.yscale:
-                ax.set_yscale(plot_cfg.yscale)
+                ax[0].set_yscale(plot_cfg.yscale)
 
             if binning[0].scale and binning[0].scale_ax:
-                ax.set_xscale(binning[0].scale)
+                ax[0].set_xscale(binning[0].scale)
 
-            ax.set_xlabel(labels[0])
-            ax.set_ylabel(ylabel)
-            ax.legend(title=analysis_cfg.name)
+            ax[0].set_xlabel('')
+            ax[-1].set_xlabel(labels[0])
+            ax[0].set_ylabel(ylabel)
+            ax[0].legend(title=analysis_cfg.name)
 
             if binning[0].integer:
-                ax.tick_params(axis='x', which='minor', bottom=False, top=False)
+                ax[-1].tick_params(axis='x', which='minor', bottom=False, top=False)
 
             if plot_cfg.grid:
-                ax.grid(True)
+                ax[0].grid(True)
 
             hep.label.exp_text(
                 exp=self.config.config.project_name, 
                 text=self.config.config.project_label,
                 supp=analysis_cfg.analysis_supplementaltext,
-                fontsize = self.config.config.fontsize
+                fontsize = self.config.config.fontsize,
+                ax=ax[0]
             )
 
             filter_text = []
 
-            filter_text += self.describe_filters(analysis_cfg.filter)
             filter_text += self.describe_filters(plot_cfg.filter)
+            filter_text += self.describe_filters(analysis_cfg.filter)
 
             if filter_text:
-                ax.text(
+                ax[0].text(
                     1,
                     1.05,
                     '\n'.join(filter_text),
-                    transform=ax.transAxes,
+                    transform=ax[0].transAxes,
                     va='bottom',
                     ha='right',
                     fontsize=self.config.config.fontsize * 0.85,
@@ -297,11 +355,38 @@ class PlotManager:
                     # )
                 )
 
+            if plot_cfg.ratio is not None:
+                for i, r in enumerate(plot_cfg.ratio, start=1):
+
+                    name_a, name_b = r.compare
+                    data_a = dfs[name_a]['data']
+                    data_a = self.apply_filters(data_a, plot_cfg.filter)
+                    data_a = self.apply_filters(data_a, analysis_cfg.filter)
+                    data_b = dfs[name_b]['data']
+                    data_b = self.apply_filters(data_b, plot_cfg.filter)
+                    data_b = self.apply_filters(data_b, analysis_cfg.filter)
+                    
+
+                    self.plot_ratio(
+                        ax=ax[i], 
+                        a=data_a,
+                        b=data_b, 
+                        product=products[0], 
+                        binning_cfg=binning[0],
+                        ylabel=r.ylabel,
+                        comparison=r.comparison,
+                        color=r.color,
+                        alpha=r.alpha,
+                        style=r.style
+                    )
+
             out = self.outdir / f'{self.config.config.project}_{analysis_name}_{products[0]}.{self.config.config.file_extension}'
             fig.tight_layout()
             additional_kw = {}
             if self.config.config.file_dpi:
                 additional_kw['dpi'] = self.config.config.file_dpi
+
+            fig.tight_layout()
             fig.savefig(out, dpi=150, bbox_inches='tight')
             plt.close(fig)
             return
