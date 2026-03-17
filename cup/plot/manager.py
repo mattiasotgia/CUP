@@ -67,20 +67,30 @@ class PlotManager:
 
         merge_on = analysis_cfg.merge_on
 
-        common_keys = self.load_dataset(analysis_cfg.dataset[0])[merge_on].drop_duplicates()
-        for adf in analysis_cfg.dataset[1:]:
-            common_keys = pd.merge(
-                common_keys,
-                self.load_dataset(adf)[merge_on].drop_duplicates(),
-                on=merge_on,
-                how='inner'
-            )
+        if merge_on:
+            # compute intersection of keys
+            common_keys = self.load_dataset(analysis_cfg.dataset[0])[merge_on].drop_duplicates()
 
+            for adf in analysis_cfg.dataset[1:]:
+                common_keys = pd.merge(
+                    common_keys,
+                    self.load_dataset(adf)[merge_on].drop_duplicates(),
+                    on=merge_on,
+                    how='inner'
+                )
 
         for adf in analysis_cfg.dataset:
+            df = self.load_dataset(adf)
+
+            if merge_on:
+                df_filtered = df.merge(common_keys, on=merge_on, how='inner')
+            else:
+                # keep all points
+                df_filtered = df
+
             out[adf.name] = {
-                'data_raw': self.load_dataset(adf),
-                'data': self.load_dataset(adf).merge(common_keys, on=merge_on, how='inner'),
+                'data_raw': df,
+                'data': df_filtered,
                 'label': adf.label,
                 'style': adf.style
             }
@@ -355,6 +365,24 @@ class PlotManager:
                     # )
                 )
 
+            if not analysis_cfg.merge_on:
+                ax[0].text(
+                    0,
+                    1.055,
+                    'All events (not only commons)',
+                    transform=ax[0].transAxes,
+                    va='bottom',
+                    ha='left',
+                    fontsize=self.config.config.fontsize * 0.85,
+                    color='red',
+                    # bbox=dict(
+                    #     boxstyle='',
+                    #     # facecolor='white',
+                    #     edgecolor='none',
+                    #     alpha=0.85
+                    # )
+                )
+
             if plot_cfg.ratio is not None:
                 for i, r in enumerate(plot_cfg.ratio, start=1):
 
@@ -380,7 +408,8 @@ class PlotManager:
                         style=r.style
                     )
 
-            out = self.outdir / f'{self.config.config.project}_{analysis_name}_{products[0]}.{self.config.config.file_extension}'
+            mergedDatasets = f'mergedDatasetsOn{analysis_cfg.merge_on}' if analysis_cfg.merge_on else 'unmergedDatasets'
+            out = self.outdir / f'{mergedDatasets}_{self.config.config.project}_{analysis_name}_{products[0]}.{self.config.config.file_extension}'
             fig.tight_layout()
             additional_kw = {}
             if self.config.config.file_dpi:
