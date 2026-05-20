@@ -145,6 +145,9 @@ class PlotConfig:
     showmedian: Optional[str] = None
     filter: Optional[List[FilterConfig]] = None
     ratio: Optional[List[RatioPlotConfig]] = None
+    profile: Optional[bool] = None
+    profile_stat: Literal['mean', 'median'] = 'median'
+    profile_band: Optional[bool] = None
 
 @dataclass
 class AnalysisConfig:

@@ -206,6 +206,107 @@ class PlotManager:
         )
 
     # ============================================================
+    # ------------------- PLOT: PROFILE (median per bin) ---------
+    # ============================================================
+
+    def plot_profile(self, ax, df: pd.DataFrame, label: str, style_name: str,
+                    x_product: str, y_product: str,
+                    x_product_name: str, y_product_name: str,
+                    x_binning_cfg: BinningConfig,
+                    stat: str = 'median',
+                    show_band: bool = True,
+                    density: bool = False):
+        """
+        Profile plot: bin x_product, compute stat (median/mean/p16:p84/iqr)
+        of y_product in each bin, plot as markers ± error band.
+
+        Parameters
+        ----------
+        stat : one of 'median', 'mean'
+            Central value to compute in each bin.
+        show_band : bool
+            If True, draw ±1σ (or IQR) band around the central value.
+        """
+        x = df[x_product].dropna()
+        y = df[y_product].dropna()
+
+        # Align on index so x[i] and y[i] correspond to the same event
+        common_idx = x.index.intersection(y.index)
+        x = x.loc[common_idx]
+        y = y.loc[common_idx]
+
+        axis = x_binning_cfg.create(x_product)
+        edges = np.concatenate([axis.edges])           # shape (n+1,)
+        centers = axis.centers    
+        width = np.diff(edges) / 2                     # shape (n,)
+
+        bin_indices = np.digitize(x.values, edges)     # 1-indexed, 0 = underflow, n+1 = overflow
+
+        n_bins = len(centers)
+        central = np.full(n_bins, np.nan)
+        lo      = np.full(n_bins, np.nan)
+        hi      = np.full(n_bins, np.nan)
+        counts  = np.zeros(n_bins, dtype=int)
+
+        for i in range(1, n_bins + 1):                 # digitize bins are 1-indexed
+            mask = bin_indices == i
+            vals = y.values[mask]
+            counts[i - 1] = len(vals)
+            if len(vals) == 0:
+                continue
+
+            if stat == 'median':
+                central[i - 1] = np.median(vals)
+                lo[i - 1]      = np.percentile(vals, 25)
+                hi[i - 1]      = np.percentile(vals, 75)
+            elif stat == 'mean':
+                central[i - 1] = np.mean(vals)
+                sem            = np.std(vals, ddof=1) / np.sqrt(len(vals)) if len(vals) > 1 else 0.0
+                lo[i - 1]      = central[i - 1] - sem
+                hi[i - 1]      = central[i - 1] + sem
+            else:
+                raise ValueError(f"stat must be 'median' or 'mean', got '{stat}'")
+
+        # Only plot bins with data
+        valid = ~np.isnan(central)
+
+        width = width[valid]
+
+        style = self.resolve_style(style_name)
+        color = style.get('color', None)
+
+        # Error band (IQR for median, ±SEM for mean)
+        if show_band:
+            ax.fill_between(
+                centers[valid],
+                lo[valid],
+                hi[valid],
+                step='mid', 
+                alpha=0.20,
+                color=color,
+                linewidth=0,
+                edgecolor=None,
+            )
+
+            ax.step(centers[valid], lo[valid], where='mid', lw=0.8, ls='--', color=color, alpha=0.4)
+            ax.step(centers[valid], hi[valid], where='mid', lw=0.8, ls='--', color=color, alpha=0.4)
+
+        # Central line + markers
+        ax.errorbar(
+            centers[valid],
+            central[valid],
+            xerr=width,
+            ls='',
+            marker='o',
+            markersize=5,
+            linewidth=1.8,
+            color=color,
+            label=label,
+        )
+        # ax.plot(centers[valid], central[valid], lw=1.8, color=color)
+
+
+    # ============================================================
     # ---------------------- PLOT: 2D -----------------------------
     # ============================================================
 
@@ -420,6 +521,99 @@ class PlotManager:
             plt.close(fig)
             return
 
+
+        # ─────────────────────────────────────────────────────────
+        # 2D — Profile plot  (NEW)
+        # ─────────────────────────────────────────────────────────
+        elif len(products) == 2 and getattr(plot_cfg, 'profile', False):
+
+            # raise NotImplemented("this is a WIP")
+
+            x_product, y_product         = products
+            x_binning_cfg, *_            = binning      # only x binning needed
+            x_label, y_label             = labels
+
+            if x_binning_cfg.unit:
+                x_label_axis = f'{x_label} ({x_binning_cfg.unit})'
+            else:
+                x_label_axis = x_label
+
+            stat       = getattr(plot_cfg, 'profile_stat', 'median')   # 'median' or 'mean'
+            show_band  = getattr(plot_cfg, 'profile_band', True)
+
+            fig, ax = plt.subplots(figsize=analysis_cfg.figsize)
+
+            for dname, dinfo in dfs.items():
+                data = self.apply_filters(dinfo['data'], plot_cfg.filter)
+                data = self.apply_filters(data, analysis_cfg.filter)
+
+                self.plot_profile(
+                    ax=ax,
+                    df=data,
+                    label=dinfo['label'],
+                    style_name=dinfo['style'],
+                    x_product=x_product,
+                    y_product=y_product,
+                    x_product_name=x_label_axis,
+                    y_product_name=y_label,
+                    x_binning_cfg=x_binning_cfg,
+                    stat=stat,
+                    show_band=show_band,
+                )
+
+            if getattr(plot_cfg, 'yscale', None):
+                ax.set_yscale(plot_cfg.yscale)
+
+            if x_binning_cfg.scale and x_binning_cfg.scale_ax:
+                ax.set_xscale(x_binning_cfg.scale)
+
+            band_legend = 'IQR (25-75%)' if stat == 'median' else 'SEM'
+            stat_label  = f'{stat.capitalize()} $\\pm$ {band_legend}'
+            ax.set_xlabel(x_label_axis)
+            ax.set_ylabel(f'{stat_label}, {y_label.lower()}')
+            ax.legend(title=f'{analysis_cfg.name}')
+
+            if getattr(plot_cfg, 'grid', False):
+                ax.grid(True)
+
+            hep.label.exp_text(
+                exp=self.config.config.project_name,
+                text=self.config.config.project_label,
+                supp=analysis_cfg.analysis_supplementaltext,
+                fontsize=self.config.config.fontsize,
+                ax=ax,
+            )
+
+            filter_text  = self.describe_filters(plot_cfg.filter)
+            filter_text += self.describe_filters(analysis_cfg.filter)
+            if filter_text:
+                ax.text(1, 1.05, '\n'.join(filter_text),
+                        transform=ax.transAxes, va='bottom', ha='right',
+                        fontsize=self.config.config.fontsize * 0.85)
+
+            if not analysis_cfg.merge_on:
+                ax.text(0, 1.055, 'All events (not only commons)',
+                        transform=ax.transAxes, va='bottom', ha='left',
+                        fontsize=self.config.config.fontsize * 0.85, color='red')
+
+            mergedDatasets = (f'mergedDatasetsOn{analysis_cfg.merge_on}'
+                            if analysis_cfg.merge_on else 'unmergedDatasets')
+            out = (self.outdir /
+                f'{mergedDatasets}_{self.config.config.project}_{analysis_name}'
+                f'_PROFILE_{x_product}_vs_{y_product}.{self.config.config.file_extension}')
+            fig.tight_layout()
+            fig.savefig(out, dpi=150, bbox_inches='tight')
+            plt.close(fig)
+            return
+
+        # ─────────────────────────────────────────────────────────
+        # 2D — original multi-panel  (kept, still WIP)
+        # ─────────────────────────────────────────────────────────
+        elif len(products) == 2:
+            raise NotImplementedError('2D multi-panel plot is a WIP.')
+
+        else:
+            raise NotImplementedError('Plotting more than 2 products is not implemented.')
         # ------------------------
         # 2D Multi-Panel
         # ------------------------
