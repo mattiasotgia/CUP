@@ -1,0 +1,1 @@
+"""cup.cli — command-line interface for cup-plot."""

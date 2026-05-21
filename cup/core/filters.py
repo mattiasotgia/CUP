@@ -1,138 +1,110 @@
-'''
-Docstring for cup.core.filters
-'''
+"""
+cup.core.filters
+================
+Built-in filter functions.  All are registered via ``@register_filter`` so
+they become available automatically when the package is imported.
+
+Adding a new filter
+-------------------
+1.  Write a function that accepts ``(df: pd.DataFrame, **params)`` and returns
+    a filtered ``pd.DataFrame``.
+2.  Decorate it with ``@register_filter("my_name")`` (optionally pass a
+    ``describe`` callable for human-readable text on plots).
+3.  Import this module (or your own module) before calling ``Config.load``.
+"""
+
+from typing import Optional, Tuple
 
 import pandas as pd
-from typing import Tuple
 
 from cup.core.registry import register_filter
 
-@register_filter('max_slice_count')
+
+# ---------------------------------------------------------------------------
+# Describe helpers (kept separate for readability)
+# ---------------------------------------------------------------------------
+
+def _describe_filter_on(on: str, label: str,
+                         min: Optional[float] = None,
+                         max: Optional[float] = None) -> str:
+    parts = []
+    label_parts = label.split(":", 1)
+    display_label = label_parts[0]
+    unit = f" {label_parts[1]}" if len(label_parts) > 1 else ""
+
+    if min is not None:
+        parts.append(f"$\\geq {min:.2f}{unit}$")
+    if max is not None:
+        parts.append(f"$\\leq {max:.2f}{unit}$")
+
+    suffix = "; ".join(parts)
+    return f"{display_label} {suffix}" if suffix else display_label
+
+
+# ---------------------------------------------------------------------------
+# Built-in filters
+# ---------------------------------------------------------------------------
+
+@register_filter("max_slice_count")
 def filter_max_slice_count(
     df: pd.DataFrame,
-    event_column: str = 'Evt',
-    slice_column: str = 'Slice',
-    product: str = 'sliceCount'
+    event_column: str = "Evt",
+    slice_column: str = "Slice",
+    product: str = "sliceCount",
 ) -> pd.DataFrame:
-    '''
-    Docstring for filter_max_slice_count
-    
-    :param df: Dataframe of the data input
-    :type df: pd.DataFrame
-    :param event_column: Event column
-    :type event_column: str
-    :param slice_column: Slice column
-    :type slice_column: str
-    :param product: what is the out product called
-    :type product: str
-    :return: Filtered dataframe
-    
-    For each event:
-        - find max sliceId
-        - convert to slice count = max sliceId + 1
-    Returns a DataFrame with one row per event.
-    :rtype: DataFrame
-    
-    
-    '''
+    """
+    For each event, compute slice count (= max slice ID + 1).
+    Returns one row per event.
+    """
     grouped = df.groupby(event_column)[slice_column].max()
     out = grouped.reset_index()
     out[product] = out[slice_column] + 1
     return out
 
-def describe_filterOn(on, label, min = None, max = None):
-    parts = []
-    lu = label.split(":", 1)
-    label = lu[0]
-    unit = lu[1] if len(lu) > 1 else None
-    unit = "" if not unit else f" {unit}"
 
-    if min is not None:
-        parts.append(f'$\\geq {min:.2f}~{unit}$')
-
-    if max is not None:
-        parts.append(f'$\\leq {max:.2f}~{unit}$')
-
-    suffix = '; '.join(parts)
-    text = f'{label} {suffix}' if suffix else label
-
-    return text
-
-@register_filter('filter_on', describe=describe_filterOn)   
+@register_filter("filter_on", describe=_describe_filter_on)
 def filter_filter_on(
     df: pd.DataFrame,
     on: str,
     label: str,
-    min: float | None = None,
-    max: float | None = None 
-): 
-    '''
-    Docstring for filter_filter_on
-    
-    :param df: Dataframe of the data input
-    :type df: pd.DataFrame
-    :param on: Value over which filtering is done
-    :type on: str
-    :param min: Min, for value
-    :type min: float | None
-    :param max: Max, for value
-    :type max: float | None
-
-    :return: Filtered dataframe
-    :rtype: DataFrame
-
-    For each event (row) filter based on the values of the 'on' variable
-    '''
-
-    mask = True
-
-    if min:
-        mask_min = df[on] > min
-        mask = mask & mask_min
-    if max:
-        mask_max = df[on] < max
-        mask = mask & mask_max
-
+    min: Optional[float] = None,
+    max: Optional[float] = None,
+) -> pd.DataFrame:
+    """Keep rows where ``df[on]`` is within [min, max] (both optional)."""
+    mask = pd.Series(True, index=df.index)
+    if min is not None:
+        mask &= df[on] > min
+    if max is not None:
+        mask &= df[on] < max
     return df[mask]
 
 
 @register_filter(
-    'value_is', 
-    describe=lambda on, label, value = None: f'{label} = {value:.2f}'
-)        
+    "value_is",
+    describe=lambda on, label, value=None: f"{label} = {value:.2f}" if value is not None else label,
+)
 def filter_value_is(
     df: pd.DataFrame,
     on: str,
     label: str,
-    value: float | None
-): 
-    '''
-    Docstring for filter_value_is
-    
-    :param df: Dataframe of the data input
-    :type df: pd.DataFrame
-    :param on: Parameter over which filtering is done
-    :type on: str
-    :param label: Label of the parameter over which filtering is done
-    :type label: str
-    :param value: Paramenter value
-    :type value: float | None
-    '''
+    value: Optional[float] = None,
+) -> pd.DataFrame:
+    """Keep rows where ``df[on] == value``."""
+    if value is None:
+        return df
+    return df[df[on] == value]
 
-    mask = True
 
-    if value:
-        mask_value = df[on] == value
-        mask = mask & mask_value
-
-    return df[mask]
-
-@register_filter('ratio', lambda product, elements: None)
+@register_filter("ratio", describe=lambda product, elements: None)
 def filter_ratio(
     df: pd.DataFrame,
     product: str,
-    elements: Tuple[str, str]
-):
+    elements: Tuple[str, str],
+) -> pd.DataFrame:
+    """Append a new column ``product = numerator / denominator``."""
     numerator, denominator = elements
-    df[product] = df[numerator]/df[denominator]
+    df = df.copy()
+    df[product] = df[numerator] / df[denominator]
     return df
+
+from cup.plotters._base_helpers import apply_filters

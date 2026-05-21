@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cup"
+version = "0.2.0"
+description = "Configurable Unified Plotter — physics histogram framework"
+requires-python = ">=3.10"
+dependencies = [
+    "hist",
+    "matplotlib",
+    "mplhep",
+    "numpy",
+    "pandas",
+    "uproot",
+    "toml",
+    "pyyaml",
+    "click",
+]
+
+[project.scripts]
+cup-plot = "cup.cli.main:cli"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cup*"]

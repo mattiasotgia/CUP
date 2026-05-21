@@ -1,2 +1,1 @@
-from . import binning
-from . import filters   # if you have any
+"""cup.core — configuration parsing, registry, filters, binnings."""
