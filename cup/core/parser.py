@@ -181,10 +181,21 @@ class Config:
         Parameters
         ----------
         path:
-            Path to the ``.yaml`` or ``.yml`` configuration file.
+            Path to the ``.yaml``, ``.yml``, or ``.toml`` configuration file.
         """
+
+        path = Path(path)
+        suffix = path.suffix.lower()
+
+        if suffix not in [".yaml", ".yml", ".toml"]:
+            raise ValueError(f"Unsupported file format: {suffix}. Must be .yaml, .yml, or .toml")
+
         with open(path, "r", encoding="utf-8") as fh:
-            raw = yaml.safe_load(fh)
+            if suffix in [".yaml", ".yml"]:
+                raw = yaml.safe_load(fh)
+            elif suffix == ".toml":
+                import toml
+                raw = toml.load(fh)
 
         # --- global section ---
         setup_raw = raw["global"].copy()
