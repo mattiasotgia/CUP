@@ -47,12 +47,14 @@ class PlotManager:
     # ---------------------- DATA LOADING -------------------------
     # ============================================================
 
-    def load_dataset(self, dataset_config: DatasetConfig) -> pd.DataFrame:
+    def load_dataset(self, dataset_config: DatasetConfig, analysis_cfg: AnalysisConfig) -> pd.DataFrame:
         '''
         Load a single dataset using the dataset configuration
         '''
         # raise NotImplementedError('Implement dataset loading logic here.')
-        return uproot.open(self.config.config.file)[dataset_config.name].arrays(library='pd')
+        where = self.config.config.dataset_path.format(analysis=analysis_cfg.name, dataset=dataset_config.name)
+        print(f'Loading dataset in {where}')
+        return uproot.open(self.config.config.file)[where].arrays(library='pd')
 
     def load_all_datasets(self, analysis_cfg: AnalysisConfig, merge_on=None):
         '''
@@ -65,25 +67,29 @@ class PlotManager:
         '''
         out = {}
 
-        merge_on = analysis_cfg.merge_on
+        if merge_on is None:
+            merge_on = analysis_cfg.merge_on
 
         if merge_on:
+            
+            merge_cols = [merge_on] if isinstance(merge_on, str) else list(merge_on)
+
             # compute intersection of keys
-            common_keys = self.load_dataset(analysis_cfg.dataset[0])[merge_on].drop_duplicates()
+            common_keys = self.load_dataset(analysis_cfg.dataset[0], analysis_cfg)[merge_cols].drop_duplicates()
 
             for adf in analysis_cfg.dataset[1:]:
                 common_keys = pd.merge(
                     common_keys,
-                    self.load_dataset(adf)[merge_on].drop_duplicates(),
+                    self.load_dataset(adf, analysis_cfg)[merge_cols].drop_duplicates(),
                     on=merge_on,
                     how='inner'
                 )
 
         for adf in analysis_cfg.dataset:
-            df = self.load_dataset(adf)
+            df = self.load_dataset(adf, analysis_cfg)
 
             if merge_on:
-                df_filtered = df.merge(common_keys, on=merge_on, how='inner')
+                df_filtered = df.merge(common_keys, on=merge_cols, how='inner')
             else:
                 # keep all points
                 df_filtered = df
@@ -488,6 +494,10 @@ class PlotManager:
                 for i, r in enumerate(plot_cfg.ratio, start=1):
 
                     name_a, name_b = r.compare
+                    
+                    # name_a = self.config.config.dataset_path.format(analysis=analysis_cfg.name, dataset=name_a)
+                    # name_b = self.config.config.dataset_path.format(analysis=analysis_cfg.name, dataset=name_b)
+                    
                     data_a = dfs[name_a]['data']
                     data_a = self.apply_filters(data_a, plot_cfg.filter)
                     data_a = self.apply_filters(data_a, analysis_cfg.filter)
@@ -509,7 +519,7 @@ class PlotManager:
                         style=r.style
                     )
 
-            mergedDatasets = f'mergedDatasetsOn{analysis_cfg.merge_on}' if analysis_cfg.merge_on else 'unmergedDatasets'
+            mergedDatasets = f'mergedDatasetsOn{"_".join(analysis_cfg.merge_on)}' if analysis_cfg.merge_on else 'unmergedDatasets'
             out = self.outdir / f'{mergedDatasets}_{self.config.config.project}_{analysis_name}_{products[0]}.{self.config.config.file_extension}'
             fig.tight_layout()
             additional_kw = {}
@@ -596,7 +606,7 @@ class PlotManager:
                         transform=ax.transAxes, va='bottom', ha='left',
                         fontsize=self.config.config.fontsize * 0.85, color='red')
 
-            mergedDatasets = (f'mergedDatasetsOn{analysis_cfg.merge_on}'
+            mergedDatasets = (f'mergedDatasetsOn{"_".join(analysis_cfg.merge_on)}'
                             if analysis_cfg.merge_on else 'unmergedDatasets')
             out = (self.outdir /
                 f'{mergedDatasets}_{self.config.config.project}_{analysis_name}'

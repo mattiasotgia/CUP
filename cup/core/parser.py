@@ -22,6 +22,7 @@ class GlobalConfig:
     file_extension: Optional[str] = 'pdf'
     file_dpi: Optional[float] = None
     ratio_height: int = 2
+    dataset_path: Optional[str] = '{dataset}'
 
 @dataclass
 class StyleConfig:
@@ -198,6 +199,7 @@ class Config:
             raise FileExistsError('Missing file for analysis')
 
         config = GlobalConfig(**setup_raw)
+        print(f'{config.dataset_path = }')
         styles: Dict[str, StyleConfig] = {}
         analysis: Dict[str, AnalysisConfig] = {}
 
