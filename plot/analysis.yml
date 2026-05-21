@@ -1,0 +1,131 @@
+# analysis.yaml — example cup configuration
+# -----------------------------------------
+# Replaces the old TOML format.
+# Run with:  cup-plot run analysis.yaml
+
+global:
+  project: "my_analysis"
+  file: "/path/to/data.root"
+  outdir: "plots"
+  project_name: "ICARUS"
+  project_label: "Work in progress"
+  fontsize: 18
+  labelfontsize: 15
+  file_extension: "pdf"
+  ratio_height: 2
+  dataset_path: "{analysis}/{dataset}"   # placeholders filled per analysis
+
+styles:
+  style_nominal:
+    histtype: step
+    color: "steelblue"
+    yerr: true
+    linewidth: 2
+  style_alternative:
+    histtype: step
+    color: "tomato"
+    yerr: true
+    linewidth: 2
+    linestyle: dashed
+
+analyses:
+  Muons:
+    merge_on: "EventID"          # intersect datasets on this column
+    density: false
+    figsize: [9, 7]
+    analysis_supplementaltext: "FHC, $\\nu_\\mu$ CC"
+
+    datasets:
+      - name: "nominal"
+        label: "Nominal MC"
+        style: "style_nominal"
+      - name: "alternative"
+        label: "Alternative MC"
+        style: "style_alternative"
+
+    # Optional analysis-level filter applied to every plot
+    filter:
+      - name: filter_on
+        on: "track_chi2"
+        label: "Track $\\chi^2$"
+        max: 100.0
+
+    plots:
+      # ── 1D overlay ──────────────────────────────────────────────────────
+      - product: "muon_momentum"
+        label: "Muon momentum"
+        ylabel: "Entries"
+        binning:
+          bins: 40
+          limits: [0, 3]
+          unit: "GeV/c"
+          scale: linear
+        showmedian: ".2f"
+        grid: false
+        ratio:
+          - compare: ["nominal", "alternative"]
+            comparison: ratio
+            color: "steelblue"
+            ylabel: "Alt / Nom"
+
+      # ── 1D with per-plot filter ──────────────────────────────────────────
+      - product: "sliceCount"
+        label: "Slice count"
+        ylabel: "Entries"
+        binning:
+          bins: 20
+          limits: [0, 20]
+          integer: true
+        filter:
+          - name: max_slice_count
+            event_column: "Evt"
+            slice_column: "Slice"
+            product: "sliceCount"
+
+      # ── Profile plot ────────────────────────────────────────────────────
+      - product: ["true_momentum", "reco_momentum"]
+        label: ["True momentum (GeV/c)", "Reco momentum (GeV/c)"]
+        binning:
+          - bins: 20
+            limits: [0, 3]
+            unit: "GeV/c"
+        profile: true
+        profile_stat: median    # or mean
+        profile_band: true      # show IQR / SEM band
+
+  NuMuCC:
+    merge_on: null     # use all events (no intersection)
+    density: true
+    figsize: [9, 7]
+
+    datasets:
+      - name: "signal_all"
+        label: "All signal"
+        style: "style_nominal"
+      - name: "signal_passing"
+        label: "Passing selection"
+        style: "style_alternative"
+
+    plots:
+      # ── Efficiency plot ─────────────────────────────────────────────────
+      - product: "reco_energy"
+        label: "Reco energy"
+        binning:
+          bins: 20
+          limits: [0, 5]
+          unit: "GeV"
+        efficiency: true
+        efficiency_numerator: "signal_passing"
+        efficiency_denominator: "signal_all"
+
+      # ── Log-scale 1D ────────────────────────────────────────────────────
+      - product: "shower_energy"
+        label: "Shower energy"
+        ylabel: "Entries"
+        binning:
+          bins: 30
+          limits: [0.01, 10]
+          unit: "GeV"
+          scale: log
+          scale_ax: true
+        yscale: log

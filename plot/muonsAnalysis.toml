@@ -9,42 +9,42 @@ file = "/Users/msotgia/dev_areas/twoDValidationsStudies/trackValidations/writerT
 outdir = "/Users/msotgia/dev_areas/twoDValidationsStudies/trackValidations/plotStuff/samplePlots/configurationSingles1D/"
 
 
-[analysis_Muons]
+[[analyses.Muons]]
 merge_on = "Evt"
 density = true
 
-[[analysis_Muons.dataset]]
+[[analyses.Muons.datasets]]
 name = "Muons/DconfigA/configA"
 # No `style` entr --> default to black line 2 pt
 label = "1D signal proc."
 
 
-[[analysis_Muons.dataset]]
+[[analyses.Muons.datasets]]
 name = "Muons/DconfigB/configB"
 style = "style_2d"
 label = "2D signal proc."
 
-[[analysis_Muons.dataset]]
+[[analyses.Muons.datasets]]
 name = "Muons/DconfigC/configC"
 # No `style` entr --> default to black line 2 pt
 label = "2D + DNNROI w/o Pulse Trains"
 style = "style_dnn"
 
 
-[[analysis_Muons.dataset]]
+[[analyses.Muons.datasets]]
 name = "Muons/DconfigD/configD"
 # No `style` entr --> default to black line 2 pt
 label = "2D + DNNROI w/ Pulse Trains = 10"
 style = "style_dnnpt"
 
 
-[[analysis_Muons.plot]]
+[[analyses.Muons.plot]]
 label = "Hit completeness"
 product = "completeness"
 yscale = "log"
 binning = {bins = 50, limits = [0, 1], flow = false}
 
-# [[analysis_Muons.plot]]
+# [[analysis.Muons.plot]]
 # label = ["Hit purity", "Hi completeness"]
 # product = ["purity", "completeness"]
 # binning = [{bins = 50, limits = [0, 1], flow = false}, {bins = 50, limits = [0, 1], flow = false}]
@@ -54,20 +54,20 @@ binning = {bins = 50, limits = [0, 1], flow = false}
 
 
 # Styles are passed to mplhep instances of `histplot`
-[style_2d]
+[styles.style_2d]
 histtype = "fill"
 # yerr = false
 color = "crimson"
 alpha = 0.5
 
-[style_dnn]
+[styles.style_dnn]
 histtype = "step"
 color = "red"
 yerr = false
 linestyle = ":"
 linewidth = 4
 
-[style_dnnpt]
+[styles.style_dnnpt]
 histtype = "step"
 color = "darkred"
 yerr = false
@@ -75,4 +75,4 @@ linestyle = "--"
 linewidth = 2
 
 # this overwrites the default style if needed
-# [style_default]
+# [styles.style_default]

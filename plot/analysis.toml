@@ -1,0 +1,125 @@
+# analysis.toml — example cup configuration
+# -----------------------------------------
+# Replaces the old YAML format.
+# Run with:  cup-plot run analysis.toml
+
+[global]
+project = "my_analysis"
+file = "/path/to/data.root"
+outdir = "plots"
+project_name = "ICARUS"
+project_label = "Work in progress"
+fontsize = 18
+labelfontsize = 15
+file_extension = "pdf"
+ratio_height = 2
+dataset_path = "{analysis}/{dataset}"   # placeholders filled per analysis
+
+[styles.style_nominal]
+histtype = "step"
+color = "steelblue"
+yerr = true
+linewidth = 2
+
+[styles.style_alternative]
+histtype = "step"
+color = "tomato"
+yerr = true
+linewidth = 2
+linestyle = "dashed"
+
+# ==============================================================================
+# MUONS ANALYSIS
+# ==============================================================================
+[analyses.Muons]
+merge_on = "EventID"          # intersect datasets on this column
+density = false
+figsize = [9, 7]
+analysis_supplementaltext = "FHC, $\\nu_\\mu$ CC"
+
+# ── Datasets ──────────────────────────────────────────────────────────────────
+[[analyses.Muons.datasets]]
+name = "nominal"
+label = "Nominal MC"
+style = "style_nominal"
+
+[[analyses.Muons.datasets]]
+name = "alternative"
+label = "Alternative MC"
+style = "style_alternative"
+
+# ── Optional analysis-level filter ────────────────────────────────────────────
+[[analyses.Muons.filter]]
+name = "filter_on"
+on = "track_chi2"
+label = "Track $\\chi^2$"
+max = 100.0
+
+# ── Plots ─────────────────────────────────────────────────────────────────────
+
+# Plot 1: 1D overlay
+[[analyses.Muons.plots]]
+product = "muon_momentum"
+label = "Muon momentum"
+ylabel = "Entries"
+showmedian = ".2f"
+grid = false
+binning = {bins = 20, limits = [0, 3], unit = "GeV/c", scale = "linear"}
+
+# Plot 2: 1D with per-plot filter
+[[analyses.Muons.plots]]
+product = "sliceCount"
+label = "Slice count"
+ylabel = "Entries"
+binning = {bins = 20, limits = [0, 20], integer = true}
+filter = { name = "max_slice_count", event_column = "Evt", slice_column = "Slice", product = "sliceCount"}
+
+
+
+# Plot 3: Profile plot
+[[analyses.Muons.plots]]
+product = ["true_momentum", "reco_momentum"]
+label = ["True momentum (GeV/c)", "Reco momentum (GeV/c)"]
+profile = true
+profile_stat = "median"    # or mean
+profile_band = true        # show IQR / SEM band
+binning = {bins = 20, limits = [0, 3], unit = "GeV/c", scale = "linear"}
+
+
+# ==============================================================================
+# NUMUCC ANALYSIS
+# ==============================================================================
+[analyses.NuMuCC]
+merge_on = "null"     # use all events (no intersection)
+density = true
+figsize = [9, 7]
+
+# ── Datasets ──────────────────────────────────────────────────────────────────
+[[analyses.NuMuCC.datasets]]
+name = "signal_all"
+label = "All signal"
+style = "style_nominal"
+
+[[analyses.NuMuCC.datasets]]
+name = "signal_passing"
+label = "Passing selection"
+style = "style_alternative"
+
+# ── Plots ─────────────────────────────────────────────────────────────────────
+
+# Plot 1: Efficiency plot
+[[analyses.NuMuCC.plots]]
+product = "reco_energy"
+label = "Reco energy"
+efficiency = true
+efficiency_numerator = "signal_passing"
+efficiency_denominator = "signal_all"
+binning = {bins = 20, limits = [0, 5], unit = "GeV", scale = "linear"}
+
+# Plot 2: Log-scale 1D
+[[analyses.NuMuCC.plots]]
+product = "shower_energy"
+label = "Shower energy"
+ylabel = "Entries"
+yscale = "log"
+binning = {bins = 30, limits = [0.01, 10.0], unit = "GeV", scale = "log", scale_ax = true}
