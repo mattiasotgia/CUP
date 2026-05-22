@@ -151,6 +151,7 @@ def _dry_run_summary(cfg):
         click.echo(f"\n  [{aname}]")
         for plot_cfg in acfg.plot:
             products = plot_cfg.product if isinstance(plot_cfg.product, list) else [plot_cfg.product]
+            binning_info = f"binning(s) = {plot_cfg.binning}" if plot_cfg.binning else ""
             plotter = get_plotter(plot_cfg, acfg)
             pname = type(plotter).__name__ if plotter else "NO PLOTTER FOUND"
-            click.echo(f"    {pname:25s}  products={products}")
+            click.echo(f"    {pname:25s}  product(s) = {str(products):40s}{binning_info}")

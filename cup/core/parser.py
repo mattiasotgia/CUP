@@ -110,6 +110,11 @@ class BinningConfig:
             flow=bool(self.flow),
             name=name,
         )
+    
+    def __str__(self) -> str:
+        unit_str = f" {self.unit}" if self.unit else ""
+        flow_str = f", flow='{self.flow}'" if self.flow else ""
+        return f"{self.scale}({self.bins} bins, limits={self.limits}{unit_str}{flow_str})"
 
 
 @dataclass
