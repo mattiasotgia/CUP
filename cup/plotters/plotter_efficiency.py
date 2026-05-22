@@ -83,25 +83,34 @@ class PlotterEfficiency(BasePlotter):
         analysis_cfg = ctx.analysis_cfg
         global_cfg = ctx.global_cfg
 
-        num_name = getattr(plot_cfg, "efficiency_numerator", None)
-        den_name = getattr(plot_cfg, "efficiency_denominator", None)
+        num_names = getattr(plot_cfg, "efficiency_numerator", None)
+        den_names = getattr(plot_cfg, "efficiency_denominator", None)
 
-        if num_name is None or den_name is None:
+        if num_names is None or den_names is None:
             raise ValueError(
                 "Efficiency plot requires 'efficiency_numerator' and "
                 "'efficiency_denominator' to be set in the plot config."
             )
 
-        if num_name not in ctx.dfs:
-            raise KeyError(f"efficiency_numerator dataset '{num_name}' not found. "
-                           f"Available: {list(ctx.dfs)}")
-        if den_name not in ctx.dfs:
-            raise KeyError(f"efficiency_denominator dataset '{den_name}' not found. "
-                           f"Available: {list(ctx.dfs)}")
+        # Normalise to lists so single-pair and multi-pair share one code path
+        if isinstance(num_names, str):
+            num_names = [num_names]
+        if isinstance(den_names, str):
+            den_names = [den_names]
+
+        if len(num_names) != len(den_names):
+            raise ValueError(
+                f"efficiency_numerator and efficiency_denominator must have the "
+                f"same length, got {len(num_names)} and {len(den_names)}."
+            )
 
         axis = binning.create(p)
 
         def _fill(dataset_name) -> Hist:
+            if dataset_name not in ctx.dfs:
+                raise KeyError(
+                    f"Dataset '{dataset_name}' not found. Available: {list(ctx.dfs)}"
+                )
             data = apply_filters(ctx.dfs[dataset_name]["data"], plot_cfg.filter)
             data = apply_filters(data, analysis_cfg.filter)
             x = data[p].dropna()
@@ -109,30 +118,32 @@ class PlotterEfficiency(BasePlotter):
             H.fill(x.values)
             return H
 
-        H_num = _fill(num_name)
-        H_den = _fill(den_name)
+        for num_name, den_name in zip(num_names, den_names):
+            H_num = _fill(num_name)
+            H_den = _fill(den_name)
 
-        k = H_num.values()
-        n = H_den.values()
-        eff, lo_err, hi_err = _clopper_pearson(k, n)
+            k = H_num.values()
+            n = H_den.values()
+            eff, lo_err, hi_err = _clopper_pearson(k, n)
 
-        num_label = ctx.dfs[num_name]["label"]
-        den_label = ctx.dfs[den_name]["label"]
+            num_label = ctx.dfs[num_name]["label"]
+            den_label = ctx.dfs[den_name]["label"]
 
-        style = resolve_style(ctx.dfs[num_name]["style"], ctx.styles)
-        color = style.get("color", "k")
+            # Use numerator dataset's style; fall back gracefully for extra pairs
+            style = resolve_style(ctx.dfs[num_name]["style"], ctx.styles)
+            color = style.get("color", None)   # None → matplotlib auto-cycles
 
-        ax.errorbar(
-            axis.centers,
-            eff,
-            yerr=np.array([lo_err, hi_err]),
-            xerr=axis.widths / 2,
-            fmt="o",
-            markersize=5,
-            linewidth=1.5,
-            color=color,
-            label=f"{num_label} / {den_label}",
-        )
+            ax.errorbar(
+                axis.centers,
+                eff,
+                yerr=np.array([lo_err, hi_err]),
+                xerr=axis.widths / 2,
+                fmt="o",
+                markersize=5,
+                linewidth=1.5,
+                color=color,
+                label=f"{num_label} / {den_label}",
+            )
 
         ax.axhline(1.0, ls="--", color="grey", lw=0.8)
         ax.set_ylim(0, 1.15)
