@@ -128,22 +128,77 @@ class PlotterEfficiency(BasePlotter):
 
             num_label = ctx.dfs[num_name]["label"]
             den_label = ctx.dfs[den_name]["label"]
+            label = f"{num_label} / {den_label}"
 
             # Use numerator dataset's style; fall back gracefully for extra pairs
+            # Resolve styles and extract standard matplotlib properties
             style = resolve_style(ctx.dfs[num_name]["style"], ctx.styles)
-            color = style.get("color", None)   # None → matplotlib auto-cycles
+            color = style.get("color", None)
+            marker = style.get("marker", "o")
+            linestyle = style.get("linestyle", "-")
+            linewidth = style.get("linewidth", 1.5)
+            alpha = style.get("alpha", 1.0)
 
-            ax.errorbar(
-                axis.centers,
-                eff,
-                yerr=np.array([lo_err, hi_err]),
-                xerr=axis.widths / 2,
-                fmt="o",
-                markersize=5,
-                linewidth=1.5,
-                color=color,
-                label=f"{num_label} / {den_label}",
-            )
+            draw_style = getattr(plot_cfg, "histtype", "errorbar").lower()
+
+            # Pre-calculate bin boundaries for step/band styles
+            # hist axis.edges gives the boundary array
+            edges = axis.edges
+            centers = axis.centers
+            
+            # Mask out NaN values (where denominator was 0) safely for plotting
+            valid = ~np.isnan(eff)
+
+            # --- Style 1: Shaded Band (Ideal for smooth efficiencies or theory) ---
+            if draw_style == "band":
+                # Draw central value as a line
+                line, = ax.plot(centers[valid], eff[valid], ls=linestyle, lw=linewidth, color=color, label=label)
+                actual_color = line.get_color() # Capture auto-cycled color if color=None
+                
+                # Fill the Clopper-Pearson uncertainty band
+                ax.fill_between(
+                    centers[valid],
+                    (eff - lo_err)[valid],
+                    (eff + hi_err)[valid],
+                    color=actual_color,
+                    alpha=style.get("fill_alpha", 0.3),
+                    step=None  # Set to "mid" if you prefer a step-like histogram band
+                )
+
+            # --- Style 2: Line with Error Lines (No markers) ---
+            elif draw_style in ["line", "step"]:
+                if draw_style == "step":
+                    # Step histogram style
+                    line, = ax.step(edges[:-1], eff, where="post", ls=linestyle, lw=linewidth, color=color, label=label)
+                else:
+                    # Smooth/Interpolated line style
+                    line, = ax.plot(centers[valid], eff[valid], ls=linestyle, lw=linewidth, color=color, label=label)
+                
+                actual_color = line.get_color()
+                # Draw vertical error ticks without markers
+                ax.vlines(
+                    centers[valid],
+                    (eff - lo_err)[valid],
+                    (eff + hi_err)[valid],
+                    colors=actual_color,
+                    lw=linewidth,
+                    alpha=alpha
+                )
+
+            else: # "errorbar"
+                ax.errorbar(
+                    centers,
+                    eff,
+                    yerr=np.array([lo_err, hi_err]),
+                    xerr=axis.widths / 2 if getattr(plot_cfg, "xerr", True) else None,
+                    fmt=marker,
+                    linestyle="None" if linestyle == "-" and draw_style == "errorbar" else linestyle,
+                    markersize=style.get("markersize", 5),
+                    linewidth=linewidth,
+                    color=color,
+                    alpha=alpha,
+                    label=label,
+                )
 
         ax.axhline(1.0, ls="--", color="grey", lw=0.8)
         ax.set_ylim(0, 1.15)
@@ -162,6 +217,6 @@ class PlotterEfficiency(BasePlotter):
         add_filter_text(ax, filter_text, global_cfg.fontsize)
 
         if not analysis_cfg.merge_on:
-            add_unmerged_warning(ax, global_cfg.fontsize)
+            add_unmerged_warning(ax, global_cfg.fontsize, global_cfg)
 
         ctx.save()

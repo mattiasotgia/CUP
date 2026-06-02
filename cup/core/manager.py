@@ -27,7 +27,7 @@ import uproot
 from cup.core.parser import Config, AnalysisConfig, DatasetConfig, PlotConfig
 from cup.plotters import FigureContext, get_plotter, list_plotters
 
-hep.style.use("DUNE")
+# hep.style.use("DUNE")
 
 
 class PlotManager:
@@ -49,6 +49,9 @@ class PlotManager:
         plt.rcParams["axes.titlesize"] = config.config.labelfontsize
         plt.rcParams["legend.fontsize"] = config.config.fontsize
         plt.rcParams["axes.ymargin"] = 0.1
+        plt.rcParams["legend.frameon"] = False
+        plt.rcParams["xaxis.labellocation"] = "right"
+        plt.rcParams["yaxis.labellocation"] = "top"
 
     # =========================================================================
     # Dataset loading

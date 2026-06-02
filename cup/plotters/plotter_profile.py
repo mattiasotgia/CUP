@@ -55,7 +55,7 @@ class PlotterProfile(BasePlotter):
                 style_name=dinfo["style"],
                 styles=ctx.styles,
                 stat=stat,
-                show_band=show_band,
+                # show_band=show_band,
             )
 
         if getattr(plot_cfg, "yscale", None):
@@ -76,6 +76,6 @@ class PlotterProfile(BasePlotter):
         add_filter_text(ax, filter_text, global_cfg.fontsize)
 
         if not analysis_cfg.merge_on:
-            add_unmerged_warning(ax, global_cfg.fontsize)
+            add_unmerged_warning(ax, global_cfg.fontsize, global_cfg)
 
         ctx.save()
