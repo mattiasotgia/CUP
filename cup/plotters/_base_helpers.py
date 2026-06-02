@@ -137,7 +137,7 @@ def draw_ratio(ax, a: pd.DataFrame, b: pd.DataFrame, product: str,
     Hb = Hist(axis, storage=hist.storage.Weight())
     Hb.fill(Db.values)
 
-    cvalues, cerrorslo, cerrorshi = hep.get_comparison(Ha, Hb, comparison=comparison)
+    cvalues, cerrorslo, cerrorshi = hep.comp.get_comparison(Ha, Hb, comparison=comparison)
     cerrors = np.array([cerrorslo, cerrorshi])
 
     if comparison in ("ratio", "split_ratio", "efficiency"):

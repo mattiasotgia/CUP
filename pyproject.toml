@@ -13,6 +13,7 @@ dependencies = [
     "mplhep",
     "numpy",
     "pandas",
+    "scipy",
     "uproot",
     "toml",
     "pyyaml",
