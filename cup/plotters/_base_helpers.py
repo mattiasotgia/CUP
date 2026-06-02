@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
 import mplhep as hep
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from hist import Hist
@@ -55,35 +56,34 @@ def describe_filters(filters) -> List[str]:
 # hep label / annotation helpers
 # ---------------------------------------------------------------------------
 
-def add_exp_label(ax, global_cfg, analysis_cfg):
-    hep.label.exp_text(
-        exp=global_cfg.project_name,
-        text=global_cfg.project_label,
-        supp=analysis_cfg.analysis_supplementaltext,
-        fontsize=global_cfg.fontsize,
-        ax=ax,
+def add_exp_label(ax: plt.Axes, global_cfg, analysis_cfg):
+    ax.set_title(f'{global_cfg.project_name}\n{global_cfg.project_label}', loc="left", fontsize=global_cfg.fontsize, color='gray')
+
+    ax.text(
+        1.05, 1, analysis_cfg.analysis_supplementaltext,
+        transform=ax.transAxes,
+        va="top", ha="right",
+        fontsize=global_cfg.fontsize * 0.5,
+        rotation=90,
+        color='gray',
     )
 
 
 def add_filter_text(ax, filter_text: List[str], fontsize: float):
     if filter_text:
-        ax.text(
-            1, 1.05,
+        ax.set_title(
             "\n".join(filter_text),
-            transform=ax.transAxes,
-            va="bottom", ha="right",
+            loc='right',
             fontsize=fontsize * 0.85,
         )
 
 
-def add_unmerged_warning(ax, fontsize: float):
-    ax.text(
-        0, 1.055,
-        "All events (not only commons)",
-        transform=ax.transAxes,
-        va="bottom", ha="left",
-        fontsize=fontsize * 0.85,
-        color="red",
+def add_unmerged_warning(ax, fontsize: float, global_cfg):
+    ax.set_title(
+        f'{global_cfg.project_name}\n{global_cfg.project_label} (not only common events!)',
+        loc='left',
+        fontsize=global_cfg.fontsize,
+        color='red',
     )
 
 
@@ -175,7 +175,7 @@ def draw_profile(
     style_name: Optional[str],
     styles: Dict[str, Any],
     stat: str = "median",
-    show_band: bool = True,
+    show_band: bool = None,
 ):
     x = df[x_product].dropna()
     y = df[y_product].dropna()
@@ -210,14 +210,74 @@ def draw_profile(
             raise ValueError(f"stat must be 'median' or 'mean', got '{stat}'")
 
     valid = ~np.isnan(central)
-    color = resolve_style(style_name, styles).get("color", None)
+    # color = resolve_style(style_name, styles).get("color", None)
 
-    if show_band:
-        ax.fill_between(centers[valid], lo[valid], hi[valid],
-                        step="mid", alpha=0.20, color=color, linewidth=0)
-        ax.step(centers[valid], lo[valid], where="mid", lw=0.8, ls="--", color=color, alpha=0.4)
-        ax.step(centers[valid], hi[valid], where="mid", lw=0.8, ls="--", color=color, alpha=0.4)
+    # Extract style configurations comprehensively
+    style = resolve_style(style_name, styles)
 
-    ax.errorbar(centers[valid], central[valid], xerr=widths[valid],
-                ls="", marker="o", markersize=5, linewidth=1.8,
-                color=color, label=label)
+    draw_style = style.get("histtype", "errorbar")
+
+    color = style.get("color", None)
+    marker = style.get("marker", "o")
+    linestyle = style.get("linestyle", "-")
+    linewidth = style.get("linewidth", 1.5)
+    alpha = style.get("alpha", 1.0)
+    fill_alpha = style.get("fill_alpha", 0.20)
+
+    # Backward compatibility handler for the legacy `show_band` boolean
+    if show_band is True and draw_style == "errorbar":
+        draw_style = "band"
+
+    # --- Style 1: Shaded Band ---
+    if draw_style == "band":
+        # Draw the central line
+        line, = ax.plot(centers[valid], central[valid], ls=linestyle, lw=linewidth, color=color, label=label)
+        actual_color = line.get_color()  # Capture auto-cycle color if color is None
+        
+        # Fill the uncertainty area (using "mid" step matching your legacy look)
+        ax.fill_between(
+            centers[valid], 
+            lo[valid], 
+            hi[valid],
+            step="mid", 
+            alpha=fill_alpha, 
+            color=actual_color, 
+            linewidth=0
+        )
+        # Optional: Add faint boundary lines to the band
+        ax.step(centers[valid], lo[valid], where="mid", lw=0.8, ls="--", color=actual_color, alpha=0.4)
+        ax.step(centers[valid], hi[valid], where="mid", lw=0.8, ls="--", color=actual_color, alpha=0.4)
+
+    # --- Style 2 & 3: Line / Step Profile with Vertical Error Lines ---
+    elif draw_style in ["line", "step"]:
+        if draw_style == "step":
+            line, = ax.step(centers[valid], central[valid], where="mid", ls=linestyle, lw=linewidth, color=color, label=label)
+        else:
+            line, = ax.plot(centers[valid], central[valid], ls=linestyle, lw=linewidth, color=color, label=label)
+            
+        actual_color = line.get_color()
+        # Draw vertical error bars mapping the uncertainty bounds
+        ax.vlines(
+            centers[valid],
+            lo[valid],
+            hi[valid],
+            colors=actual_color,
+            lw=linewidth,
+            alpha=alpha
+        )
+
+    # --- Style 4: Classic Errorbar (Default) ---
+    else:  # "errorbar"
+        ax.errorbar(
+            centers[valid], 
+            central[valid], 
+            yerr=[(central - lo)[valid], (hi - central)[valid]],
+            xerr=widths[valid],
+            ls="", 
+            marker=marker, 
+            markersize=style.get("markersize", 5), 
+            linewidth=linewidth,
+            color=color, 
+            alpha=alpha,
+            label=label
+        )

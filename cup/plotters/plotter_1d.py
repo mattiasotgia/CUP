@@ -108,7 +108,7 @@ class Plotter1D(BasePlotter):
         add_filter_text(ax[0], filter_text, global_cfg.fontsize)
 
         if not analysis_cfg.merge_on:
-            add_unmerged_warning(ax[0], global_cfg.fontsize)
+            add_unmerged_warning(ax[0], global_cfg.fontsize, global_cfg)
 
         # Ratio panels
         if plot_cfg.ratio:
