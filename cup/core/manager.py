@@ -53,6 +53,37 @@ class PlotManager:
         plt.rcParams["xaxis.labellocation"] = "right"
         plt.rcParams["yaxis.labellocation"] = "top"
 
+        # 1. ax.ticklabel_format(style='scientific', scilimits=(0,0))
+        # plt.rcParams['axes.formatter.style'] = 'scientific'
+        plt.rcParams['axes.formatter.limits'] = (-2, 3)
+
+        # 2. ax.ticklabel_format(useMathText=True)
+        plt.rcParams['axes.formatter.use_mathtext'] = True
+
+        # 3. ax.minorticks_on()
+        plt.rcParams['xtick.minor.visible'] = True
+        plt.rcParams['ytick.minor.visible'] = True
+
+        plt.rcParams['xtick.major.size'] = 6
+        plt.rcParams['ytick.major.size'] = 6
+
+        plt.rcParams['xtick.direction'] = 'in'
+        plt.rcParams['ytick.direction'] = 'in'
+
+        plt.rcParams['xtick.top'] = True
+        plt.rcParams['ytick.right'] = True
+
+        # 2. ax.tick_params(which='minor', length=3, direction='in', right=True, top=True)
+        plt.rcParams['xtick.minor.size'] = 3
+        plt.rcParams['ytick.minor.size'] = 3
+
+        # Note: Direction, top, and right settings automatically apply to minor ticks 
+        # when set globally, but you can explicitly ensure they mirror major ticks.
+        plt.rcParams['xtick.minor.top'] = True
+        plt.rcParams['ytick.minor.right'] = True
+
+        plt.rcParams['axes.xmargin'] = 0.0
+
     # =========================================================================
     # Dataset loading
     # =========================================================================
@@ -177,8 +208,9 @@ class PlotManager:
     def _build_outpath(self, analysis_name: str, products: List[str],
                        binnings, plot_cfg: PlotConfig) -> Path:
         analysis_cfg = self.config.analysis[analysis_name]
+        merge_on = analysis_cfg.merge_on if isinstance(analysis_cfg.merge_on, list) else [analysis_cfg.merge_on] 
         merged = (
-            f"mergedOn_{'_'.join(analysis_cfg.merge_on)}"
+            f"mergedOn_{'_'.join(merge_on)}"
             if analysis_cfg.merge_on
             else "unmerged"
         )

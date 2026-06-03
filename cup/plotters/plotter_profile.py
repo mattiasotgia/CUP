@@ -67,7 +67,8 @@ class PlotterProfile(BasePlotter):
 
         band_legend = "IQR (25–75%)" if stat == "median" else "SEM"
         ax.set_xlabel(x_label_axis)
-        ax.set_ylabel(f"{stat.capitalize()} $\\pm$ {band_legend}, {y_label.lower()}")
+        # ax.set_ylabel(f"{stat.capitalize()} $\\pm$ {band_legend}, {y_label.lower()}")
+        ax.set_ylabel(f"{stat.capitalize()}, {y_label.lower()}")
         ax.legend(title=analysis_cfg.name)
 
         add_exp_label(ax, global_cfg, analysis_cfg)
