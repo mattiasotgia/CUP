@@ -139,7 +139,7 @@ class PlotterEfficiency(BasePlotter):
             linewidth = style.get("linewidth", 1.5)
             alpha = style.get("alpha", 1.0)
 
-            draw_style = getattr(plot_cfg, "histtype", "errorbar").lower()
+            draw_style = style.get("histtype", "errorbar").lower()
 
             # Pre-calculate bin boundaries for step/band styles
             # hist axis.edges gives the boundary array
@@ -201,7 +201,8 @@ class PlotterEfficiency(BasePlotter):
                 )
 
         ax.axhline(1.0, ls="--", color="grey", lw=0.8)
-        ax.set_ylim(0, 1.15)
+        ylims = getattr(plot_cfg, "ylim", (0, 1.15))
+        ax.set_ylim(*ylims)
         ax.set_ylabel("Efficiency")
         ax.set_xlabel(label_axis)
         ax.legend(title=analysis_cfg.name)
