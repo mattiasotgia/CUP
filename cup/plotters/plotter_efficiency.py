@@ -138,6 +138,7 @@ class PlotterEfficiency(BasePlotter):
             linestyle = style.get("linestyle", "-")
             linewidth = style.get("linewidth", 1.5)
             alpha = style.get("alpha", 1.0)
+            yerr = style.get("yerr", False)
 
             draw_style = style.get("histtype", "errorbar").lower()
 
@@ -176,20 +177,22 @@ class PlotterEfficiency(BasePlotter):
                 
                 actual_color = line.get_color()
                 # Draw vertical error ticks without markers
-                ax.vlines(
-                    centers[valid],
-                    (eff - lo_err)[valid],
-                    (eff + hi_err)[valid],
-                    colors=actual_color,
-                    lw=linewidth,
-                    alpha=alpha
-                )
+
+                if yerr:
+                    ax.vlines(
+                        centers[valid],
+                        (eff - lo_err)[valid],
+                        (eff + hi_err)[valid],
+                        colors=actual_color,
+                        lw=linewidth,
+                        alpha=alpha
+                    )
 
             else: # "errorbar"
                 ax.errorbar(
                     centers,
                     eff,
-                    yerr=np.array([lo_err, hi_err]),
+                    yerr=np.array([lo_err, hi_err]) if yerr else None,
                     xerr=axis.widths / 2 if getattr(plot_cfg, "xerr", True) else None,
                     fmt=marker,
                     linestyle="None" if linestyle == "-" and draw_style == "errorbar" else linestyle,
@@ -201,11 +204,12 @@ class PlotterEfficiency(BasePlotter):
                 )
 
         ax.axhline(1.0, ls="--", color="grey", lw=0.8)
-        ylims = getattr(plot_cfg, "ylim", (0, 1.15))
-        ax.set_ylim(*ylims)
+        ylims = getattr(plot_cfg, "ylim", None)
+        if ylims is not None:
+            ax.set_ylim(*ylims)
         ax.set_ylabel("Efficiency")
         ax.set_xlabel(label_axis)
-        ax.legend(title=analysis_cfg.name)
+        ax.legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name)
 
         if binning.scale and binning.scale_ax:
             ax.set_xscale(binning.scale)

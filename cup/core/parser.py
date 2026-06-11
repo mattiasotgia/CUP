@@ -168,6 +168,7 @@ class AnalysisConfig:
     density: bool = False
     figsize: Tuple[float, float] = (9, 7)
     filter: Optional[List[FilterConfig]] = None
+    label: Optional[str] = None
     analysis_supplementaltext: str = ""
 
 
