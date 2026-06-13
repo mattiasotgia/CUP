@@ -30,6 +30,7 @@ from typing import Optional
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from hist import Hist
 import hist
 
@@ -128,7 +129,8 @@ class PlotterEfficiency(BasePlotter):
 
             num_label = ctx.dfs[num_name]["label"]
             den_label = ctx.dfs[den_name]["label"]
-            label = f"{num_label} / {den_label}"
+            # label = f"{num_label} / {den_label}"
+            label = f"{num_label}"
 
             # Use numerator dataset's style; fall back gracefully for extra pairs
             # Resolve styles and extract standard matplotlib properties
@@ -151,20 +153,36 @@ class PlotterEfficiency(BasePlotter):
             valid = ~np.isnan(eff)
 
             # --- Style 1: Shaded Band (Ideal for smooth efficiencies or theory) ---
-            if draw_style == "band":
-                # Draw central value as a line
-                line, = ax.plot(centers[valid], eff[valid], ls=linestyle, lw=linewidth, color=color, label=label)
-                actual_color = line.get_color() # Capture auto-cycled color if color=None
+            # if draw_style == "band":
+            #     # Draw central value as a line
+            #     line, = ax.plot(centers[valid], eff[valid], ls=linestyle, lw=linewidth, color=color, label=label)
+            #     actual_color = line.get_color() # Capture auto-cycled color if color=None
                 
-                # Fill the Clopper-Pearson uncertainty band
-                ax.fill_between(
-                    centers[valid],
-                    (eff - lo_err)[valid],
-                    (eff + hi_err)[valid],
-                    color=actual_color,
-                    alpha=style.get("fill_alpha", 0.3),
-                    step=None  # Set to "mid" if you prefer a step-like histogram band
-                )
+            #     # Fill the Clopper-Pearson uncertainty band
+            #     ax.fill_between(
+            #         centers[valid],
+            #         (eff - lo_err)[valid],
+            #         (eff + hi_err)[valid],
+            #         color=actual_color,
+            #         alpha=style.get("fill_alpha", 0.3),
+            #         step=None  # Set to "mid" if you prefer a step-like histogram band
+            #     )
+            if draw_style == "band":
+                line, = ax.step(centers[valid], eff[valid], where="mid", ls=linestyle, lw=linewidth, color=color, label=label)
+                actual_color = line.get_color()
+
+                fill_alpha = style.get("fill_alpha", 0.3)
+                for i, idx in enumerate(np.where(valid)[0]):
+                    lo = edges[idx]
+                    hi = edges[idx + 1]
+                    ax.add_patch(patches.Rectangle(
+                        xy=(lo, (eff - lo_err)[idx]),
+                        width=hi - lo,
+                        height=(lo_err + hi_err)[idx],
+                        linewidth=0,
+                        facecolor=actual_color,
+                        alpha=fill_alpha,
+                    ))
 
             # --- Style 2: Line with Error Lines (No markers) ---
             elif draw_style in ["line", "step"]:
@@ -209,7 +227,7 @@ class PlotterEfficiency(BasePlotter):
             ax.set_ylim(*ylims)
         ax.set_ylabel("Efficiency")
         ax.set_xlabel(label_axis)
-        ax.legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name)
+        ax.legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name, ncols=analysis_cfg.legend_ncols)
 
         if binning.scale and binning.scale_ax:
             ax.set_xscale(binning.scale)

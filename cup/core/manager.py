@@ -221,9 +221,11 @@ class PlotManager:
         else:
             tag = products[0]
 
+        plot_tag = f'_{plot_cfg.tag}_' if plot_cfg.tag else ''
+
         fname = (
             f"{merged}_{self.config.config.project}"
-            f"_{analysis_name}_{tag}"
+            f"_{analysis_name}_{tag}{plot_tag}"
             f".{self.config.config.file_extension}"
         )
         return self.outdir / fname

@@ -100,7 +100,7 @@ class Plotter1D(BasePlotter):
         ax[0].set_xlabel("")
         ax[-1].set_xlabel(label_axis)
         ax[0].set_ylabel(ylabel)
-        ax[0].legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name)
+        ax[0].legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name, ncols=analysis_cfg.legend_ncols)
 
         add_exp_label(ax[0], global_cfg, analysis_cfg)
 

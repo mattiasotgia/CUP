@@ -69,7 +69,7 @@ class PlotterProfile(BasePlotter):
         ax.set_xlabel(x_label_axis)
         # ax.set_ylabel(f"{stat.capitalize()} $\\pm$ {band_legend}, {y_label.lower()}")
         ax.set_ylabel(f"{stat.capitalize()}, {y_label.lower()}")
-        ax.legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name)
+        ax.legend(title=analysis_cfg.label if analysis_cfg.label else analysis_cfg.name, ncols=analysis_cfg.legend_ncols)
 
         add_exp_label(ax, global_cfg, analysis_cfg)
 

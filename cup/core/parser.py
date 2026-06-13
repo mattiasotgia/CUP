@@ -91,29 +91,39 @@ class FilterConfig:
 
 @dataclass
 class BinningConfig:
-    bins: int
-    limits: Tuple[float, float]
+    bins: int | List[float]          # int → uniform; list → explicit edges
+    limits: Optional[Tuple[float, float]] = None
     unit: Optional[str] = None
     scale: str = "linear"
     flow: Optional[str] = None
     integer: bool = False
     scale_ax: bool = True
 
+    def __post_init__(self):
+        if isinstance(self.bins, list):
+            if self.limits is not None:
+                raise ValueError("'limits' must not be set when 'bins' is a list of edges.")
+        else:
+            if self.limits is None:
+                raise ValueError("'limits' is required when 'bins' is an integer.")
+
     def create(self, name: str):
-        """Build a hist axis for this binning."""
         if self.scale not in registry.BINSCALE_REGISTRY:
             raise ValueError(f"Unknown binning scale: '{self.scale}'. "
                              f"Registered: {list(registry.BINSCALE_REGISTRY)}")
+        if isinstance(self.bins, list):
+            return registry.BINSCALE_REGISTRY[self.scale](
+                edges=self.bins, flow=bool(self.flow), name=name,
+            )
         return registry.BINSCALE_REGISTRY[self.scale](
-            bins=self.bins,
-            limits=self.limits,
-            flow=bool(self.flow),
-            name=name,
+            bins=self.bins, limits=self.limits, flow=bool(self.flow), name=name,
         )
-    
+
     def __str__(self) -> str:
-        unit_str = f" {self.unit}" if self.unit else ""
         flow_str = f", flow='{self.flow}'" if self.flow else ""
+        if isinstance(self.bins, list):
+            return f"{self.scale}(edges=[{self.bins[0]}…{self.bins[-1]}], {len(self.bins)-1} bins{flow_str})"
+        unit_str = f" {self.unit}" if self.unit else ""
         return f"{self.scale}({self.bins} bins, limits={self.limits}{unit_str}{flow_str})"
 
 
@@ -157,6 +167,8 @@ class PlotConfig:
     efficiency: bool = False
     efficiency_denominator: Optional[str] = None   # dataset name used as denominator
     efficiency_numerator: Optional[str] = None     # dataset name used as numerator
+    ylim: Optional[Tuple[float, float]] = None
+    tag: Optional[str] = None
 
 
 @dataclass
@@ -170,6 +182,7 @@ class AnalysisConfig:
     filter: Optional[List[FilterConfig]] = None
     label: Optional[str] = None
     analysis_supplementaltext: str = ""
+    legend_ncols: Optional[int] = 1
 
 
 @dataclass

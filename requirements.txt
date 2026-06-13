@@ -5,3 +5,4 @@ hist
 numpy
 pandas
 toml
+matplotlib-colors
